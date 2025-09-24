@@ -157,6 +157,7 @@ const RUTAS = [
 const RUTA_INFO = {
   "001": { distanciaKm: 12.4, duracionMin: 46, mujerSegura: true,  foto: "./data/001/001.jpg" },
   "002": { distanciaKm: 9.8,  duracionMin: 35, mujerSegura: false, foto: "./img/buses/002.jpg" },
+  "003": { distanciaKm: 9.8,  duracionMin: 35, mujerSegura: false, foto: "./img/buses/002.jpg" },
   "152": { distanciaKm: 27.2, duracionMin: 79, mujerSegura: true,  foto: "./img/buses/152.jpg" }
 };
 
