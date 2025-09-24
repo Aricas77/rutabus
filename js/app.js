@@ -164,959 +164,666 @@ const RUTA_INFO = {
 
 
 
-// app.js
-
 const App = {
-  // --- Estado ---
-  map: null,
-  activeLayers: {},
-  userLocation: null,
-  isShowingAll: true,
-  isLocationActive: false,
-  routeData: [],
-  userLocationMarker: null,
-  activeRoute: null,
+    // --- Propiedades y Estado ---
+    map: null,
+    activeLayers: {},
+    userLocation: null,
+    isShowingAll: true, // AHORA mostramos todas las rutas por defecto
+    isLocationActive: false, // NUEVO: Estado para saber si la ubicación está activada
+    routeData: [],
+    userLocationMarker: null,
+    activeRoute: null,//iv
+    elements: {
+        rutasLista: document.getElementById('rutasLista'),
+        buscador: document.getElementById('buscadorRutas'),
+        sinResultados: document.getElementById('sinResultados'),
+        guestButtons: document.getElementById('guest-buttons'),
+        userButtons: document.getElementById('user-buttons'),
+        logoutBtn: document.getElementById('logout-btn'),
+        sidebar: document.querySelector('.sidebar'),
+        toggleSidebarBtn: document.getElementById('toggleSidebarBtn'),
+        toggleRoutesBtn: document.getElementById('toggleRoutesBtn'),
+        locationBtn: document.getElementById('locationBtn'), // NUEVO: Referencia al botón flotante
+        userDisplayName: document.getElementById('user-display-name'),
+        menuIcon: document.getElementById('menu-icon'),
+        adminMenu: document.getElementById('admin-menu'),
+        addRouteBtn: document.getElementById('add-route-btn')
+    },
+    icons: {
+        parada: L.icon({
+            iconUrl: "https://api.iconify.design/mdi/bus-stop.svg?color=%230d6efd",
+            iconSize: [22, 22],
+            iconAnchor: [11, 11],
+            popupAnchor: [0, -12]
+            }),
+        ubicacion: L.icon({
+            iconUrl: 'https://api.iconify.design/material-symbols/my-location.svg?color=%230d6efd',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        }),
 
-  elements: {
-    rutasLista: document.getElementById('rutasLista'),
-    buscador: document.getElementById('buscadorRutas'),
-    sinResultados: document.getElementById('sinResultados'),
-    guestButtons: document.getElementById('guest-buttons'),
-    userButtons: document.getElementById('user-buttons'),
-    logoutBtn: document.getElementById('logout-btn'),
-    sidebar: document.querySelector('.sidebar'),
-    toggleSidebarBtn: document.getElementById('toggleSidebarBtn'),
-    toggleRoutesBtn: document.getElementById('toggleRoutesBtn'),
-    locationBtn: document.getElementById('locationBtn'),
-    userDisplayName: document.getElementById('user-display-name'),
-    menuIcon: document.getElementById('menu-icon'),
-    adminMenu: document.getElementById('admin-menu'),
-    addRouteBtn: document.getElementById('add-route-btn')
-  },
+          bus: L.icon({
+            iconUrl: "https://api.iconify.design/mdi/bus.svg?color=%23000000",
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        }),
+    },
 
-  icons: {
-    parada: L.icon({
-      iconUrl: "https://api.iconify.design/mdi/bus-stop.svg?color=%230d6efd",
-      iconSize: [22, 22],
-      iconAnchor: [11, 11],
-      popupAnchor: [0, -12]
-    }),
-    ubicacion: L.icon({
-      iconUrl: 'https://api.iconify.design/material-symbols/my-location.svg?color=%230d6efd',
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
-    }),
-    bus: L.icon({
-      iconUrl: "https://api.iconify.design/mdi/bus.svg?color=%23000000",
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
-    }),
-  },
+    // --- Métodos de Inicialización ---
+    async init() {
+        this.initMap();
+        this.updateAuthUI();
+        this.setupEventListeners();
 
-  // --- Inicialización ---
-  async init() {
-    this.initMap();
-    this.updateAuthUI();
-    this.setupEventListeners();
+        // CAMBIO: Ya no pedimos la ubicación al iniciar
+        await this.fetchAllRouteData();
+        
+        this.renderRouteList();
+        this.updateToggleButtonText();
+        this.elements.toggleRoutesBtn.disabled = false;
+    },
 
-    // Carga de rutas (tal como lo traías)
-    await this.fetchAllRouteData();
+    initMap() {
+        this.map = L.map("map").setView([19.5438, -96.9103], 13);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+        }).addTo(this.map);
+    },
 
-    this.renderRouteList();
-    this.updateToggleButtonText();
-    this.elements.toggleRoutesBtn.disabled = false;
-  },
+    // --- Lógica de Carga de Datos y Ubicación ---
+    async fetchAllRouteData() {
+        this.elements.toggleRoutesBtn.textContent = 'Cargando datos de rutas...';
+        const promises = RUTAS.map(rutaInfo => 
+            this.fetchGeoJSON(`./data/${rutaInfo.id}/route.json`)
+                .then(geojson => ({ ...rutaInfo, geojson }))
+        );
+        this.routeData = await Promise.all(promises);
+    },
 
-  initMap() {
-    this.map = L.map("map").setView([19.5438, -96.9103], 13);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-    }).addTo(this.map);
-  },
+    getUserLocation() {
+        const options = {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        };
 
-  // --- Datos / Ubicación ---
-  async fetchAllRouteData() {
-    this.elements.toggleRoutesBtn.textContent = 'Cargando datos de rutas...';
-    const promises = RUTAS.map(rutaInfo =>
-      this.fetchGeoJSON(`./data/${rutaInfo.id}/route.json`)
-        .then(geojson => ({ ...rutaInfo, geojson }))
-    );
-    this.routeData = await Promise.all(promises);
-  },
+        return new Promise((resolve, reject) => { // CAMBIO: Usamos reject para manejar errores
+            if (!navigator.geolocation) {
+                alert("La geolocalización no es compatible con tu navegador.");
+                reject(new Error("Geolocation not supported"));
+                return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    this.userLocation = {
+                        lat: position.coords.latitude,
+                        lon: position.coords.longitude
+                    };
+                    const userLatLng = [this.userLocation.lat, this.userLocation.lon];
+                    if (this.userLocationMarker) {
+                        this.map.removeLayer(this.userLocationMarker);
+                    }
+                    this.userLocationMarker = L.marker(userLatLng, { icon: this.icons.ubicacion })
+                        .addTo(this.map)
+                        .bindPopup("<b>¡Estás aquí!</b>")
+                        .openPopup();
+                    this.map.setView(userLatLng, 15);
+                    resolve();
+                },
+                (error) => {
+                    alert("No se pudo obtener tu ubicación. Asegúrate de haber concedido los permisos.");
+                    reject(error);
+                },
+                options
+            );
+        });
+    },
 
-  getUserLocation() {
-    const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
+    // --- NUEVA LÓGICA PARA EL BOTÓN FLOTANTE ---
+    async toggleUserLocation() {
+        this.isLocationActive = !this.isLocationActive;
+        this.elements.locationBtn.classList.toggle('active', this.isLocationActive);
 
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        alert("La geolocalización no es compatible con tu navegador.");
-        reject(new Error("Geolocation not supported"));
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          this.userLocation = { lat: position.coords.latitude, lon: position.coords.longitude };
-          const userLatLng = [this.userLocation.lat, this.userLocation.lon];
-          if (this.userLocationMarker) this.map.removeLayer(this.userLocationMarker);
-          this.userLocationMarker = L.marker(userLatLng, { icon: this.icons.ubicacion })
-            .addTo(this.map)
-            .bindPopup("<b>¡Estás aquí!</b>")
-            .openPopup();
-          this.map.setView(userLatLng, 15);
-          resolve();
-        },
-        (error) => {
-          alert("No se pudo obtener tu ubicación. Asegúrate de haber concedido los permisos.");
-          reject(error);
-        },
-        options
-      );
-    });
-  },
-
-  async toggleUserLocation() {
-    this.isLocationActive = !this.isLocationActive;
-    this.elements.locationBtn.classList.toggle('active', this.isLocationActive);
-
-    if (this.isLocationActive) {
-      try {
-        await this.getUserLocation();
-        this.isShowingAll = false;
-      } catch {
-        this.isLocationActive = false;
-        this.elements.locationBtn.classList.remove('active');
-        this.isShowingAll = true;
-      }
-    } else {
-      this.isShowingAll = true;
-      if (this.userLocationMarker) {
-        this.map.removeLayer(this.userLocationMarker);
-        this.userLocationMarker = null;
-      }
-    }
-
-    this.updateToggleButtonText();
-    this.renderRouteList();
-  },
-
-  // --- Render/UI ---
-  renderRouteList() {
-    const query = this.elements.buscador.value;
-    const normalizedQuery = this.normalizeString(query);
-
-    this.elements.rutasLista.innerHTML = '';
-    const fragment = document.createDocumentFragment();
-    const radiusInKm = 1.5;
-
-    let baseRoutes = this.routeData;
-    if (!this.isShowingAll && this.userLocation) {
-      baseRoutes = this.routeData.filter(ruta =>
-        this.isRouteNearby(ruta, this.userLocation, radiusInKm)
-      );
-    }
-
-    const routesToShow = baseRoutes.filter(ruta => {
-      const normalizedText = this.normalizeString(ruta.name);
-      return normalizedText.includes(normalizedQuery);
-    });
-
-    if (routesToShow.length === 0) {
-      const li = document.createElement('li');
-      li.className = 'list-group-item text-muted';
-      if (query) {
-        li.textContent = 'No se encontraron rutas con ese nombre.';
-      } else if (!this.isShowingAll && this.userLocation) {
-        li.textContent = 'No hay rutas cercanas. Pulsa de nuevo el botón de ubicación para ver todas.';
-      } else {
-        li.textContent = 'No hay rutas para mostrar.';
-      }
-      fragment.appendChild(li);
-    } else {
-      for (const ruta of routesToShow) {
-        const li = document.createElement('li');
-        li.className = 'list-group-item';
-
-        const button = document.createElement('button');
-        button.className = 'btn btn-link ruta-btn';
-        button.dataset.ruta = ruta.id;
-        button.dataset.stop = ruta.stop;
-        button.textContent = ruta.name;
-
-        if (this.activeLayers[ruta.id]) {
-          button.classList.add('active');
-          li.classList.add('active');
-        }
-
-        const info = RUTA_INFO[ruta.id];
-        const detalle = document.createElement('div');
-        detalle.className = 'route-details';
-
-        if (info) {
-          detalle.innerHTML = `
-            <div class="meta">
-              <div><strong>Distancia de la ruta:</strong> ${info.distanciaKm} km</div>
-              <div><strong>Tiempo en completarse:</strong> ${info.duracionMin} min</div>
-              <div>
-                <strong>¿Versión "Mujer segura"?:</strong>
-                <span class="badge ${info.mujerSegura ? 'bg-success' : 'bg-secondary'}">
-                  ${info.mujerSegura ? 'Sí' : 'No'}
-                </span>
-              </div>
-            </div>
-            ${info.foto ? `<img src="${info.foto}" alt="Autobús ruta ${ruta.id}">` : ''}
-          `;
+        if (this.isLocationActive) {
+            try {
+                await this.getUserLocation();
+                this.isShowingAll = false; // Mostrar cercanas
+            } catch {
+                // Si falla al obtener la ubicación, revertimos el estado del botón
+                this.isLocationActive = false;
+                this.elements.locationBtn.classList.remove('active');
+                this.isShowingAll = true; // Volver a mostrar todas las rutas
+            }
         } else {
-          detalle.innerHTML = `
-            <div class="meta">
-              <div class="text-muted">Información no disponible para esta ruta.</div>
-            </div>
-          `;
+            // Si el usuario lo desactiva, volvemos a mostrar todas las rutas
+            this.isShowingAll = true;
+            if (this.userLocationMarker) {
+                this.map.removeLayer(this.userLocationMarker);
+                this.userLocationMarker = null;
+            }
         }
+        
+        this.updateToggleButtonText();
+        this.renderRouteList();
+    },
 
-        li.appendChild(button);
-        li.appendChild(detalle);
-        fragment.appendChild(li);
+
+    // --- Renderizado y Lógica de UI ---
+    renderRouteList() {
+  const query = this.elements.buscador.value;
+  const normalizedQuery = this.normalizeString(query);
+
+  this.elements.rutasLista.innerHTML = '';
+  const fragment = document.createDocumentFragment();
+  const radiusInKm = 1.5;
+
+  let baseRoutes = this.routeData;
+  if (!this.isShowingAll && this.userLocation) {
+    baseRoutes = this.routeData.filter(ruta =>
+      this.isRouteNearby(ruta, this.userLocation, radiusInKm)
+    );
+  }
+
+  const routesToShow = baseRoutes.filter(ruta => {
+    const normalizedText = this.normalizeString(ruta.name);
+    return normalizedText.includes(normalizedQuery);
+  });
+
+  if (routesToShow.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'list-group-item text-muted';
+    if (query) {
+      li.textContent = 'No se encontraron rutas con ese nombre.';
+    } else if (!this.isShowingAll && this.userLocation) {
+      li.textContent = 'No hay rutas cercanas. Pulsa de nuevo el botón de ubicación para ver todas.';
+    } else {
+      li.textContent = 'No hay rutas para mostrar.';
+    }
+    fragment.appendChild(li);
+  } else {
+    for (const ruta of routesToShow) {
+      const li = document.createElement('li');
+      li.className = 'list-group-item';
+
+      const button = document.createElement('button');
+      button.className = 'btn btn-link ruta-btn';
+      button.dataset.ruta = ruta.id;
+      button.dataset.stop = ruta.stop;
+      button.textContent = ruta.name;
+
+      // Si la ruta está activa en el mapa, refleja estado en UI
+      if (this.activeLayers[ruta.id]) {
+        button.classList.add('active');
+        li.classList.add('active'); // <- necesario para mostrar .route-details por CSS
       }
+
+      // Panel de detalles bajo la ruta
+      const info = RUTA_INFO[ruta.id];
+      const detalle = document.createElement('div');
+      detalle.className = 'route-details';
+
+      if (info) {
+        detalle.innerHTML = `
+          <div class="meta">
+            <div><strong>Distancia de la ruta:</strong> ${info.distanciaKm} km</div>
+            <div><strong>Tiempo en completarse:</strong> ${info.duracionMin} min</div>
+            <div>
+              <strong>¿Versión "Mujer segura"?:</strong>
+              <span class="badge ${info.mujerSegura ? 'bg-success' : 'bg-secondary'}">
+                ${info.mujerSegura ? 'Sí' : 'No'}
+              </span>
+            </div>
+          </div>
+          ${info.foto ? `<img src="${info.foto}" alt="Autobús ruta ${ruta.id}">` : ''}
+        `;
+      } else {
+        detalle.innerHTML = `
+          <div class="meta">
+            <div class="text-muted">Información no disponible para esta ruta.</div>
+          </div>
+        `;
+      }
+
+      li.appendChild(button);
+      li.appendChild(detalle);
+      fragment.appendChild(li);
     }
+  }
 
-    this.elements.rutasLista.appendChild(fragment);
-  },
+  this.elements.rutasLista.appendChild(fragment);
+},
 
-  updateToggleButtonText() {
-    if (!navigator.geolocation) {
-      this.elements.toggleRoutesBtn.textContent = 'Ubicación no disponible';
-      this.elements.toggleRoutesBtn.disabled = true;
-      return;
-    }
-    this.elements.toggleRoutesBtn.textContent = this.isShowingAll
-      ? 'Mostrar Solo Rutas Cercanas'
-      : 'Mostrar Todas las Rutas';
-  },
 
-  // Cercanía robusta (revisa todas las features y usa metros)
-  isRouteNearby(ruta, userLoc, radiusKm) {
-    const features = ruta.geojson?.features;
-    if (!Array.isArray(features) || features.length === 0) return false;
+    updateToggleButtonText() {
+        if (!navigator.geolocation) {
+            this.elements.toggleRoutesBtn.textContent = 'Ubicación no disponible';
+            this.elements.toggleRoutesBtn.disabled = true;
+            return;
+        }
+        this.elements.toggleRoutesBtn.textContent = this.isShowingAll 
+            ? 'Mostrar Solo Rutas Cercanas' 
+            : 'Mostrar Todas las Rutas';
+    },
 
-    const radiusM = radiusKm * 1000;
-    const userLL = L.latLng(userLoc.lat, userLoc.lon);
+    isRouteNearby(ruta, userLoc, radiusKm) {
+        if (!ruta.geojson?.features?.[0]?.geometry?.coordinates) {
+            return false;
+        }
+        const coordinates = ruta.geojson.features[0].geometry.coordinates;
 
-    for (const f of features) {
-      const g = f.geometry;
-      if (!g) continue;
-
-      const checkCoords = (coords) => {
-        for (const [lng, lat] of coords) {
-          if (userLL.distanceTo([lat, lng]) <= radiusM) return true;
+        for (const point of coordinates) {
+            const actualPoint = Array.isArray(point[0]) ? point[0] : point;
+            const pointLoc = { lon: actualPoint[0], lat: actualPoint[1] };
+            if (this.getDistanceInKm(userLoc, pointLoc) <= radiusKm) {
+                return true;
+            }
         }
         return false;
-      };
+    },
+    getDistanceInKm(coords1, coords2) {
+        const R = 6371;
+        const dLat = (coords2.lat - coords1.lat) * Math.PI / 180;
+        const dLon = (coords2.lon - coords1.lon) * Math.PI / 180;
+        const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(coords1.lat * Math.PI / 180) * Math.cos(coords2.lat * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2); 
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+        return R * c;
+    },
+    async toggleRuta(buttonEl) {
+        const rutaId = buttonEl.dataset.ruta;
+        // Obtenemos la referencia a la "casilla" (el elemento <li>)
+        const listItemEl = buttonEl.closest('.list-group-item');
 
-      if (g.type === 'LineString' && Array.isArray(g.coordinates)) {
-        if (checkCoords(g.coordinates)) return true;
-      } else if (g.type === 'MultiLineString' && Array.isArray(g.coordinates)) {
-        for (const line of g.coordinates) {
-          if (checkCoords(line)) return true;
-        }
-      }
-    }
-    return false;
-  },
-
-  getDistanceInKm(coords1, coords2) {
-    const R = 6371;
-    const dLat = (coords2.lat - coords1.lat) * Math.PI / 180;
-    const dLon = (coords2.lon - coords1.lon) * Math.PI / 180;
-    const a =
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(coords1.lat * Math.PI / 180) * Math.cos(coords2.lat * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  },
-
-  async toggleRuta(buttonEl) {
-    const rutaId = buttonEl.dataset.ruta;
-    const listItemEl = buttonEl.closest('.list-group-item');
-
-    if (this.activeLayers[rutaId]) {
-      this.removeRoute(rutaId, buttonEl, listItemEl);
-    } else {
-      const stopId = buttonEl.dataset.stop;
-      this.addRoute(rutaId, stopId, buttonEl, listItemEl);
-    }
-  },
-
-  async addRoute(rutaId, stopId, buttonEl, listItemEl) {
-    buttonEl.classList.add('active');
-    listItemEl.classList.add('active');
-
-    this.activeLayers[rutaId] = {};
-
-    const ruta = this.routeData.find(r => r.id === rutaId);
-    const geoRuta = ruta ? ruta.geojson : null;
-
-    const stopsUrl = `./data/${rutaId}/route_${stopId}_stops.geojson`;
-    const geoStops = await this.fetchGeoJSON(stopsUrl);
-
-    if (geoRuta) {
-      const routeLayer = L.geoJSON(geoRuta, { style: { color: "green", weight: 4 } }).addTo(this.map);
-      this.activeLayers[rutaId].routeLayer = routeLayer;
-      const bounds = routeLayer.getBounds();
-      if (bounds.isValid()) this.map.fitBounds(bounds, { padding: [20, 20] });
-    }
-
-    // Animación de bus (como lo traías)
-    try {
-      setTimeout(() => {
-        let latlngs = this._stitchLatLngsFromLayer(this.activeLayers[rutaId].routeLayer, 80);
-
-        if (!latlngs || latlngs.length < 2) {
-          const geom = geoRuta?.features;
-          const all = [];
-          if (Array.isArray(geom)) {
-            for (const f of geom) {
-              const g = f.geometry;
-              if (!g) continue;
-              if (g.type === 'LineString') {
-                all.push(...g.coordinates.map(([lng, lat]) => [lat, lng]));
-              } else if (g.type === 'MultiLineString') {
-                for (const line of g.coordinates) {
-                  all.push(...line.map(([lng, lat]) => [lat, lng]));
-                }
-              }
-            }
-          }
-          latlngs = all;
-        }
-
-        if (latlngs && latlngs.length >= 2) {
-          if (this.activeRoute) {
-            this.map.removeLayer(this.activeRoute);
-            this.activeRoute = null;
-          }
-          this.bus.stop();
-
-          this.activeRoute = L.polyline(latlngs, { opacity: 0, weight: 0 }).addTo(this.map);
-
-          this.bus.start(this.activeRoute, {
-            speed: 250,
-            loop: true,
-            fitBounds: false
-          });
+        if (this.activeLayers[rutaId]) {
+            this.removeRoute(rutaId, buttonEl, listItemEl);
         } else {
-          console.warn('[RUTABUS] No se pudo construir latlngs para animar el bus.');
+            const stopId = buttonEl.dataset.stop;
+            this.addRoute(rutaId, stopId, buttonEl, listItemEl);
         }
-      }, 0);
-    } catch (e) {
-      console.error('[RUTABUS] Error preparando animación del bus:', e);
-    }
+    },
+    async addRoute(rutaId, stopId, buttonEl, listItemEl) {
+        buttonEl.classList.add('active');
+        // Añadimos la clase 'active' también al <li>
+        listItemEl.classList.add('active');
 
-    // Paradas + UI de viaje
-    if (geoStops) {
-      const stopLayer = L.geoJSON(geoStops, {
-        pointToLayer: (feature, latlng) =>
-          L.marker(latlng, { icon: this.icons.parada })
-            .bindPopup(`<b>Parada:</b> ${feature?.properties?.name || "Sin nombre"}`)
-      }).addTo(this.map);
-      this.activeLayers[rutaId].stopLayer = stopLayer;
+        this.activeLayers[rutaId] = {};
+        
+        const ruta = this.routeData.find(r => r.id === rutaId);
+        const geoRuta = ruta ? ruta.geojson : null;
+        
+        const stopsUrl = `./data/${rutaId}/route_${stopId}_stops.geojson`;
+        const geoStops = await this.fetchGeoJSON(stopsUrl);
 
-      // Extraer stops
-      const stops = (geoStops.features || []).map((f, idx) => {
-        const [lng, lat] = f.geometry?.coordinates || [];
-        const props = f.properties || {};
-        const id = props.id || props.stop_id || String(idx + 1);
-        const name = props.name || `Parada ${id}`;
-        return { id, name, latlng: L.latLng(lat, lng) };
-      });
-      this.activeLayers[rutaId].stops = stops;
-
-      // Construir controles de viaje
-      this._buildTripControls(listItemEl, rutaId, stops);
-    } else {
-      const detalle = listItemEl.querySelector('.route-details');
-      if (detalle) {
-        const warn = document.createElement('div');
-        warn.className = 'trip-msg';
-        warn.innerHTML = `<em>Esta opción no está disponible para esta ruta (no hay paradas).</em>`;
-        detalle.appendChild(warn);
-      }
-    }
-
-    if (!geoRuta && !geoStops) {
-      alert(`No se pudo mostrar la ruta ${rutaId}. Verifica que los archivos existan.`);
-      this.removeRoute(rutaId, buttonEl, listItemEl);
-    }
-  },
-
-  removeRoute(rutaId, buttonEl, listItemEl) {
-    const layers = this.activeLayers[rutaId];
-    if (layers?.routeLayer) this.map.removeLayer(layers.routeLayer);
-    if (layers?.stopLayer) this.map.removeLayer(layers.stopLayer);
-
-    buttonEl?.classList.remove("active");
-    listItemEl?.classList.remove("active");
-
-    delete this.activeLayers[rutaId];
-
-    // detener animación del bus
-    if (this.activeRoute) {
-      this.bus.stop();
-      this.activeRoute = null;
-    }
-
-    // detener viaje si era de esta ruta
-    if (this.trip.active && this.trip.rutaId === rutaId) {
-      this._stopTrip(true);
-    }
-  },
-
-  // --- VIAJE: UI ---
-  _buildTripControls(listItemEl, rutaId, stops) {
-    const detalle = listItemEl.querySelector('.route-details');
-    if (!detalle) return;
-
-    let box = detalle.querySelector('.trip-controls');
-    if (box) box.remove();
-
-    box = document.createElement('div');
-    box.className = 'trip-controls';
-    box.innerHTML = `
-      <div class="row">
-        <div class="col-12 col-md-6">
-          <label class="form-label">Parada de entrada</label>
-          <select class="form-select form-select-sm trip-origin">
-            <option value="">Selecciona...</option>
-            ${stops.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
-          </select>
-        </div>
-        <div class="col-12 col-md-6">
-          <label class="form-label">Parada de destino</label>
-          <select class="form-select form-select-sm trip-dest">
-            <option value="">Selecciona...</option>
-            ${stops.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
-          </select>
-        </div>
-        <div class="col-12 d-flex gap-2">
-          <button class="btn btn-primary btn-sm trip-start">Iniciar viaje</button>
-          <button class="btn btn-secondary btn-sm trip-stop" disabled>Detener</button>
-        </div>
-        <div class="col-12">
-          <div class="trip-msg"></div>
-        </div>
-        <div class="col-12 trip-progress" style="display:none;">
-          <div class="progress">
-            <div class="progress-bar" role="progressbar" style="width:0%"></div>
-          </div>
-          <div class="stats">
-            <span class="progress-text">0%</span>
-            <span class="dist-text">0 m restantes</span>
-          </div>
-        </div>
-      </div>
-    `;
-    detalle.appendChild(box);
-
-    this.trip.ui = {
-      container: box,
-      originSel: box.querySelector('.trip-origin'),
-      destSel: box.querySelector('.trip-dest'),
-      startBtn: box.querySelector('.trip-start'),
-      stopBtn: box.querySelector('.trip-stop'),
-      msg: box.querySelector('.trip-msg'),
-      progressBar: box.querySelector('.progress-bar'),
-      progressText: box.querySelector('.progress-text'),
-      distText: box.querySelector('.dist-text'),
-      progressWrap: box.querySelector('.trip-progress')
-    };
-
-    this.trip.ui.startBtn.addEventListener('click', () => this._startTrip(rutaId));
-    this.trip.ui.stopBtn.addEventListener('click', () => this._stopTrip());
-  },
-
-  // --- VIAJE: lógica ---
-  _startTrip(rutaId) {
-    if (!this.activeLayers[rutaId]?.stops) {
-      this.trip.ui.msg.textContent = 'No hay paradas disponibles en esta ruta.';
-      return;
-    }
-    const oId = this.trip.ui.originSel.value;
-    const dId = this.trip.ui.destSel.value;
-    if (!oId || !dId) {
-      this.trip.ui.msg.textContent = 'Selecciona parada de entrada y de destino.';
-      return;
-    }
-    if (oId === dId) {
-      this.trip.ui.msg.textContent = 'Elige paradas diferentes para iniciar.';
-      return;
-    }
-
-    const stops = this.activeLayers[rutaId].stops;
-    const origin = stops.find(s => s.id === oId);
-    const dest = stops.find(s => s.id === dId);
-    if (!origin || !dest) {
-      this.trip.ui.msg.textContent = 'Paradas no válidas.';
-      return;
-    }
-
-    const path = this._getRouteLatLngs(rutaId);
-    if (!path.length) {
-      this.trip.ui.msg.textContent = 'No se pudo leer el trazado de la ruta.';
-      return;
-    }
-
-    const i0 = this._nearestIndexOnPath(path, origin.latlng);
-    const i1 = this._nearestIndexOnPath(path, dest.latlng);
-    let segment = [];
-    if (i0 < i1) segment = path.slice(i0, i1 + 1);
-    else segment = path.slice(i1, i0 + 1).reverse();
-
-    if (segment.length < 2) {
-      this.trip.ui.msg.textContent = 'No se pudo formar el segmento entre paradas.';
-      return;
-    }
-
-    // limpiar viaje previo si existe
-    this._stopTrip(true);
-
-    // estado
-    this.trip.active = true;
-    this.trip.rutaId = rutaId;
-    this.trip.origin = origin;
-    this.trip.dest = dest;
-    this.trip.segmentLatLngs = segment;
-
-    // capas
-    this.trip.segmentLayer = L.polyline(segment, { color: '#0d6efd', weight: 6 }).addTo(this.map);
-    this.trip.progressLayer = L.polyline([segment[0]], { color: '#198754', weight: 6 }).addTo(this.map);
-    this.trip.originMarker = L.marker(origin.latlng, { title: 'Parada de entrada' })
-      .bindPopup(`<b>Entrada:</b> ${origin.name}`).addTo(this.map);
-    this.trip.destMarker = L.marker(dest.latlng, { title: 'Parada de destino' })
-      .bindPopup(`<b>Destino:</b> ${dest.name}`).addTo(this.map);
-
-    const bounds = L.latLngBounds(segment);
-    if (bounds.isValid()) this.map.fitBounds(bounds, { padding: [30,30] });
-
-    // UI
-    this.trip.ui.msg.textContent = `Viaje iniciado: ${origin.name} → ${dest.name}`;
-    this.trip.ui.progressWrap.style.display = 'block';
-    this.trip.ui.startBtn.disabled = true;
-    this.trip.ui.stopBtn.disabled = false;
-
-    // geolocalización continua
-    if (!navigator.geolocation) {
-      this.trip.ui.msg.textContent = 'Geolocalización no soportada por el navegador.';
-      return;
-    }
-    this.trip.watchId = navigator.geolocation.watchPosition(
-      (pos) => this._onTripPosition(pos),
-      (err) => {
-        console.warn('watchPosition error', err);
-        this.trip.ui.msg.textContent = 'No se pudo obtener tu ubicación continuamente.';
-      },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
-    );
-  },
-
-  _stopTrip(silent = false) {
-    if (this.trip.watchId != null) {
-      navigator.geolocation.clearWatch(this.trip.watchId);
-      this.trip.watchId = null;
-    }
-    const t = this.trip;
-    ['segmentLayer','progressLayer','originMarker','destMarker','userMarker'].forEach(k => {
-      if (t[k]) { this.map.removeLayer(t[k]); t[k] = null; }
-    });
-    t.active = false;
-    t.rutaId = null;
-    t.origin = null;
-    t.dest = null;
-    t.segmentLatLngs = [];
-
-    if (t.ui.container) {
-      if (!silent) t.ui.msg.textContent = 'Viaje detenido.';
-      t.ui.progressWrap.style.display = 'none';
-      t.ui.progressBar.style.width = '0%';
-      t.ui.progressText.textContent = '0%';
-      t.ui.distText.textContent = '0 m restantes';
-      t.ui.startBtn.disabled = false;
-      t.ui.stopBtn.disabled = true;
-    }
-  },
-
-  _onTripPosition(position) {
-    if (!this.trip.active) return;
-    const lat = position.coords.latitude;
-    const lng = position.coords.longitude;
-    const here = L.latLng(lat, lng);
-
-    if (!this.trip.userMarker) {
-      this.trip.userMarker = L.marker(here, { zIndexOffset: 1200 }).addTo(this.map);
-    } else {
-      this.trip.userMarker.setLatLng(here);
-    }
-
-    const seg = this.trip.segmentLatLngs;
-    const idx = this._nearestIndexOnPath(seg, here);
-
-    const covered = seg.slice(0, Math.max(1, idx + 1));
-    this.trip.progressLayer.setLatLngs(covered);
-
-    const totalM = this._pathLengthM(seg);
-    const doneM = this._pathLengthM(covered);
-    const remainM = Math.max(0, totalM - doneM);
-    const pct = totalM > 0 ? Math.min(100, Math.round((doneM / totalM) * 100)) : 0;
-
-    this.trip.ui.progressBar.style.width = `${pct}%`;
-    this.trip.ui.progressText.textContent = `${pct}%`;
-    this.trip.ui.distText.textContent = (remainM > 1000)
-      ? `${(remainM/1000).toFixed(2)} km restantes`
-      : `${Math.round(remainM)} m restantes`;
-
-    const atDest = here.distanceTo(seg[seg.length - 1]) < 25;
-    if (atDest) {
-      this.trip.ui.msg.textContent = '¡Has llegado a tu destino! 🎉';
-      this.trip.ui.progressBar.style.width = '100%';
-      this.trip.ui.progressText.textContent = '100%';
-      this.trip.ui.distText.textContent = '0 m';
-      // setTimeout(()=> this._stopTrip(), 4000);
-    }
-  },
-
-  // --- Auth/UI ---
-  updateAuthUI() {
-    const userString = localStorage.getItem('rutabus_user');
-
-    if (userString) {
-      this.elements.guestButtons.style.display = 'none';
-      this.elements.userButtons.style.display = 'flex';
-
-      const userData = JSON.parse(userString);
-
-      if (userData.rol === 'administrador') {
-        this.elements.userDisplayName.textContent = 'Administrador';
-        this.elements.menuIcon.style.display = 'block';
-      } else {
-        const firstName = userData.nombre.split(' ')[0];
-        this.elements.userDisplayName.textContent = firstName;
-      }
-    } else {
-      this.elements.guestButtons.style.display = 'flex';
-      this.elements.userButtons.style.display = 'none';
-      this.elements.userDisplayName.textContent = 'Invitado';
-    }
-  },
-
-  logout() {
-    localStorage.removeItem('rutabus_user');
-    window.location.reload();
-  },
-
-  // --- Listeners ---
-  setupEventListeners() {
-    const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
-
-    on(this.elements.rutasLista, 'click', (e) => {
-      const btn = e.target.closest(".ruta-btn");
-      if (btn) this.toggleRuta(btn);
-    });
-
-    on(this.elements.buscador, 'input', () => this.renderRouteList());
-    on(this.elements.buscador, 'keydown', (e) => {
-      if (e.key === 'Escape') {
-        e.target.value = '';
-        this.renderRouteList();
-      }
-    });
-
-    on(this.elements.logoutBtn, 'click', () => this.logout());
-
-    on(this.elements.toggleSidebarBtn, 'click', () => {
-      this.elements.sidebar.classList.toggle('collapsed');
-      const isCollapsed = this.elements.sidebar.classList.contains('collapsed');
-      this.elements.toggleSidebarBtn.textContent = isCollapsed ? '▶️' : '◀️';
-      this.elements.toggleSidebarBtn.classList.toggle('collapsed', isCollapsed);
-    });
-
-    // Mejora: si no hay ubicación, la pide al pasar a "cercanas"
-    on(this.elements.toggleRoutesBtn, 'click', async () => {
-      if (this.isShowingAll) {
-        if (!this.userLocation) {
-          try { await this.getUserLocation(); }
-          catch { alert('No se pudo obtener tu ubicación. Revisa permisos e inténtalo de nuevo.'); return; }
+        if (geoRuta) {
+            const routeLayer = L.geoJSON(geoRuta, { style: { color: "green", weight: 4 } }).addTo(this.map);
+            this.activeLayers[rutaId].routeLayer = routeLayer;
+            const bounds = routeLayer.getBounds();
+            if (bounds.isValid()) {
+                this.map.fitBounds(bounds, { padding: [20, 20] });
+            }
         }
-        this.isShowingAll = false;
-      } else {
-        this.isShowingAll = true;
-      }
-      this.updateToggleButtonText();
-      this.renderRouteList();
-    });
 
-    on(this.elements.locationBtn, 'click', () => this.toggleUserLocation());
+            //Preparar y arrancar animación del bus 
+            try {
+            setTimeout(() => {
+                //Intenta coser directamente las capas ya montadas del L.geoJSON
+                let latlngs = this._stitchLatLngsFromLayer(this.activeLayers[rutaId].routeLayer, 80);
 
-    on(this.elements.menuIcon, 'click', (e) => {
-      e.stopPropagation();
-      const menu = this.elements.adminMenu;
-      if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-    });
+                if (!latlngs || latlngs.length < 2) {
+                    const geom = geoRuta?.features;
+                    const all = [];
+                    if (Array.isArray(geom)) {
+                        for (const f of geom) {
+                            const g = f.geometry;
+                            if (!g) continue;
+                            if (g.type === 'LineString') {
+                                all.push(...g.coordinates.map(([lng, lat]) => [lat, lng]));
+                            } else if (g.type === 'MultiLineString') {
+                                for (const line of g.coordinates) {
+                                    all.push(...line.map(([lng, lat]) => [lat, lng]));
+                                }
+                            }
+                        }
+                    }
+                    latlngs = all;
+                }
 
-    window.addEventListener('click', () => {
-      if (this.elements.adminMenu && this.elements.adminMenu.style.display === 'block') {
-        this.elements.adminMenu.style.display = 'none';
-      }
-    });
+                if (latlngs && latlngs.length >= 2) {
+                    if (this.activeRoute) {
+                        this.map.removeLayer(this.activeRoute);
+                        this.activeRoute = null;
+                    }
+                    this.bus.stop();
 
-    on(this.elements.addRouteBtn, 'click', (e) => {
-      e.preventDefault();
-      window.location.href = '/admin.html';
-    });
-  },
+                    // Polyline oculto para la animación
+                    this.activeRoute = L.polyline(latlngs, { opacity: 0, weight: 0 }).addTo(this.map);
 
-  // --- Helpers ---
-  async fetchGeoJSON(url) {
-    try {
-      const res = await fetch(url, { cache: "no-cache" });
-      if (!res.ok) { return null; }
-      const data = await res.json();
-      return (data && Array.isArray(data.features) && data.features.length > 0) ? data : null;
-    } catch {
-      return null;
-    }
-  },
-
-  normalizeString(str) {
-    return (str || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  },
-
-  // Coser polylines de L.geoJSON
-  _stitchLatLngsFromLayer(layer, thresholdMeters = 80) {
-    const almostEqual = (a, b) => {
-      if (!a || !b) return false;
-      return Math.abs(a.lat - b.lat) < 1e-5 && Math.abs(a.lng - b.lng) < 1e-5;
-    };
-
-    const pieces = [];
-    const collect = (lyr) => {
-      if (!lyr) return;
-      if (lyr instanceof L.Polyline && !(lyr instanceof L.Polygon)) {
-        const arr = lyr.getLatLngs();
-        const flat = Array.isArray(arr[0]) ? arr.flat() : arr;
-        if (flat.length >= 2) pieces.push(flat);
-      } else if (typeof lyr.getLayers === 'function') {
-        lyr.getLayers().forEach(collect);
-      }
-    };
-    collect(layer);
-
-    if (pieces.length === 0) return [];
-
-    pieces.sort((a, b) => b.length - a.length);
-    const path = pieces.shift().slice();
-
-    const dist = (a, b) => a.distanceTo(b);
-    while (pieces.length) {
-      const last = path[path.length - 1];
-
-      let bestIdx = -1;
-      let bestRev = false;
-      let bestD = Infinity;
-
-      for (let i = 0; i < pieces.length; i++) {
-        const p = pieces[i];
-        const dStart = dist(last, p[0]);
-        const dEnd   = dist(last, p[p.length - 1]);
-
-        if (dStart < bestD) { bestD = dStart; bestIdx = i; bestRev = false; }
-        if (dEnd   < bestD) { bestD = dEnd;   bestIdx = i; bestRev = true;  }
-      }
-
-      if (bestD > thresholdMeters) break;
-
-      const chosen = pieces.splice(bestIdx, 1)[0];
-      const seq = bestRev ? chosen.slice().reverse() : chosen;
-
-      if (almostEqual(path[path.length - 1], seq[0])) path.pop();
-
-      path.push(...seq);
-    }
-
-    return path;
-  },
-
-  _extractLatLngsFromGeoJSON(geojson) {
-    const latlngs = [];
-    if (!geojson || !Array.isArray(geojson.features)) return latlngs;
-
-    for (const f of geojson.features) {
-      const g = f && f.geometry;
-      if (!g) continue;
-
-      if (g.type === 'LineString' && Array.isArray(g.coordinates)) {
-        for (const [lng, lat] of g.coordinates) latlngs.push([lat, lng]);
-      } else if (g.type === 'MultiLineString' && Array.isArray(g.coordinates)) {
-        for (const line of g.coordinates) {
-          for (const [lng, lat] of line) latlngs.push([lat, lng]);
+                    this.bus.start(this.activeRoute, {
+                        speed: 250,      
+                        loop: true,
+                        fitBounds: false
+                    });
+                } else {
+                    console.warn('[RUTABUS] No se pudo construir latlngs para animar el bus.');
+                }
+            }, 0);
+        } catch (e) {
+            console.error('[RUTABUS] Error preparando animación del bus:', e);
         }
-      }
+
+
+
+        if (geoStops) {
+            const stopLayer = L.geoJSON(geoStops, {
+                pointToLayer: (feature, latlng) =>
+                    L.marker(latlng, { icon: this.icons.parada })
+                        .bindPopup(`<b>Parada:</b> ${feature?.properties?.name || "Sin nombre"}`)
+            }).addTo(this.map);
+            this.activeLayers[rutaId].stopLayer = stopLayer;
+        }
+
+        if (!geoRuta && !geoStops) {
+            alert(`No se pudo mostrar la ruta ${rutaId}. Verifica que los archivos existan.`);
+            this.removeRoute(rutaId, buttonEl, listItemEl);
+        }
+    },
+    removeRoute(rutaId, buttonEl, listItemEl) {
+        const layers = this.activeLayers[rutaId];
+        if (layers?.routeLayer) this.map.removeLayer(layers.routeLayer);
+        if (layers?.stopLayer) this.map.removeLayer(layers.stopLayer);
+        
+        buttonEl?.classList.remove("active");
+        // Quitamos la clase 'active' también del <li>
+        listItemEl?.classList.remove("active");
+        
+        delete this.activeLayers[rutaId];
+
+        //detener el bus
+        if (this.activeRoute) {
+            this.bus.stop();
+            this.activeRoute = null; 
+        }             
+
+    },
+    updateAuthUI() {
+        const userString = localStorage.getItem('rutabus_user');
+        
+        if (userString) {
+            this.elements.guestButtons.style.display = 'none';
+            this.elements.userButtons.style.display = 'flex';
+
+            const userData = JSON.parse(userString);
+            
+            if (userData.rol === 'administrador') {
+                this.elements.userDisplayName.textContent = 'Administrador';
+                // --- AÑADIR ESTA LÍNEA ---
+                // Si es admin, mostramos el icono del menú
+                this.elements.menuIcon.style.display = 'block'; 
+            } else {
+                const firstName = userData.nombre.split(' ')[0];
+                this.elements.userDisplayName.textContent = firstName;
+            }
+        } else {
+            this.elements.guestButtons.style.display = 'flex';
+            this.elements.userButtons.style.display = 'none';
+            this.elements.userDisplayName.textContent = 'Invitado';
+        }
+    },
+    logout() {
+        localStorage.removeItem('rutabus_user');
+        window.location.reload();
+    },
+
+    // --- Event Listeners ---
+    setupEventListeners() {
+        this.elements.rutasLista.addEventListener("click", (e) => {
+            const btn = e.target.closest(".ruta-btn");
+            if (btn) this.toggleRuta(btn);
+        });
+        this.elements.buscador.addEventListener('input', () => this.renderRouteList());
+        this.elements.buscador.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.target.value = '';
+                this.renderRouteList();
+            }
+        });
+        this.elements.logoutBtn.addEventListener('click', () => this.logout());
+        this.elements.toggleSidebarBtn.addEventListener('click', () => {
+            this.elements.sidebar.classList.toggle('collapsed');
+            const isCollapsed = this.elements.sidebar.classList.contains('collapsed');
+            this.elements.toggleSidebarBtn.textContent = isCollapsed ? '▶️' : '◀️';
+            this.elements.toggleSidebarBtn.classList.toggle('collapsed', isCollapsed);
+        });
+        this.elements.toggleRoutesBtn.addEventListener('click', () => {
+            this.isShowingAll = !this.isShowingAll;
+            this.updateToggleButtonText();
+            this.renderRouteList();
+        });
+
+        // CAMBIO: Añadimos el listener para el botón flotante
+        this.elements.locationBtn.addEventListener('click', () => this.toggleUserLocation());
+
+        this.elements.menuIcon.addEventListener('click', (e) => {
+            e.stopPropagation(); // Evita que el clic se propague al 'window'
+            const menu = this.elements.adminMenu;
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        // Listener para cerrar el menú si se hace clic en cualquier otro lugar
+        window.addEventListener('click', () => {
+            if (this.elements.adminMenu.style.display === 'block') {
+                this.elements.adminMenu.style.display = 'none';
+            }
+        });
+
+        this.elements.addRouteBtn.addEventListener('click', (e) => {
+            e.preventDefault(); // Evita que el enlace '#' recargue la página
+            window.location.href = '/admin.html'; // Redirige a la nueva página
+        });
+    },
+
+    // --- Funciones de Ayuda (Helpers) ---
+    async fetchGeoJSON(url) {
+        try {
+            const res = await fetch(url, { cache: "no-cache" });
+            if (!res.ok) { return null; }
+            const data = await res.json();
+            return (data && Array.isArray(data.features) && data.features.length > 0) ? data : null;
+        } catch (error) {
+            return null;
+        }
+    },
+    normalizeString(str) {
+        return (str || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    },
+
+
+    // Une todas las polylines del L.geoJSON en un solo camino continuo.
+    _stitchLatLngsFromLayer: function (layer, thresholdMeters = 80) {
+        const almostEqual = (a, b) => {
+            if (!a || !b) return false;
+            return Math.abs(a.lat - b.lat) < 1e-5 && Math.abs(a.lng - b.lng) < 1e-5;
+        };
+
+        const pieces = [];
+        const collect = (lyr) => {
+            if (!lyr) return;
+            if (lyr instanceof L.Polyline && !(lyr instanceof L.Polygon)) {
+                const arr = lyr.getLatLngs();
+                const flat = Array.isArray(arr[0]) ? arr.flat() : arr;
+                if (flat.length >= 2) pieces.push(flat);
+            } else if (typeof lyr.getLayers === 'function') {
+                lyr.getLayers().forEach(collect);
+            }
+        };
+        collect(layer);
+
+        if (pieces.length === 0) return [];
+
+        pieces.sort((a, b) => b.length - a.length);
+        const path = pieces.shift().slice();
+
+        const dist = (a, b) => a.distanceTo(b);
+        while (pieces.length) {
+            const last = path[path.length - 1];
+
+            let bestIdx = -1;
+            let bestRev = false;
+            let bestD = Infinity;
+
+            for (let i = 0; i < pieces.length; i++) {
+                const p = pieces[i];
+                const dStart = dist(last, p[0]);
+                const dEnd   = dist(last, p[p.length - 1]);
+
+                if (dStart < bestD) { bestD = dStart; bestIdx = i; bestRev = false; }
+                if (dEnd   < bestD) { bestD = dEnd;   bestIdx = i; bestRev = true;  }
+            }
+
+            if (bestD > thresholdMeters) break;
+
+            const chosen = pieces.splice(bestIdx, 1)[0];
+            const seq = bestRev ? chosen.slice().reverse() : chosen;
+
+            if (almostEqual(path[path.length - 1], seq[0])) path.pop();
+
+            path.push(...seq);
+        }
+
+        return path;
+    },
+
+
+    _extractLatLngsFromGeoJSON: function (geojson) {
+        const latlngs = [];
+        if (!geojson || !Array.isArray(geojson.features)) return latlngs;
+
+        for (const f of geojson.features) {
+            const g = f && f.geometry;
+            if (!g) continue;
+
+            if (g.type === 'LineString' && Array.isArray(g.coordinates)) {
+            for (const [lng, lat] of g.coordinates) latlngs.push([lat, lng]);
+        } else if (g.type === 'MultiLineString' && Array.isArray(g.coordinates)) {
+            for (const line of g.coordinates) {
+                for (const [lng, lat] of line) latlngs.push([lat, lng]);
+            }
+        }
     }
     return latlngs;
-  },
+},
 
-  _firstPolylineFromLayer(layer) {
+
+    // helper para tomar la primera polyline dentro del L.geoJSON
+    _firstPolylineFromLayer: function (layer) {
     if (!layer) return null;
     if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) return layer;
 
     if (typeof layer.getLayers === 'function') {
-      const arr = layer.getLayers();
-      for (const l of arr) {
+        const arr = layer.getLayers();
+        for (const l of arr) {
         const found = this._firstPolylineFromLayer(l);
         if (found) return found;
-      }
+        }
     }
     return null;
-  },
-
-  // --- VIAJE: estado ---
-  trip: {
-    active: false,
-    rutaId: null,
-    origin: null,   // {id, name, latlng}
-    dest: null,     // {id, name, latlng}
-    segmentLatLngs: [],
-
-    watchId: null,
-    segmentLayer: null,
-    progressLayer: null,
-    originMarker: null,
-    destMarker: null,
-    userMarker: null,
-
-    ui: {
-      container: null,
-      originSel: null,
-      destSel: null,
-      startBtn: null,
-      stopBtn: null,
-      msg: null,
-      progressBar: null,
-      progressText: null,
-      distText: null,
-      progressWrap: null
-    }
-  },
-
-  // Devuelve todas las coords [lat,lng] (continuas) de la ruta
-  _getRouteLatLngs(rutaId) {
-    const layer = this.activeLayers[rutaId]?.routeLayer;
-    if (!layer) return [];
-    let latlngs = this._stitchLatLngsFromLayer(layer, 120);
-    if (latlngs && latlngs.length >= 2) return latlngs;
-
-    const ruta = this.routeData.find(r => r.id === rutaId);
-    return this._extractLatLngsFromGeoJSON(ruta?.geojson);
-  },
-
-  // Índice más cercano en un path
-  _nearestIndexOnPath(pathLatLngs, latlng) {
-    if (!pathLatLngs || pathLatLngs.length === 0) return 0;
-    let bestIdx = 0, bestD = Infinity;
-    const p = L.latLng(latlng);
-    for (let i = 0; i < pathLatLngs.length; i++) {
-      const d = p.distanceTo(pathLatLngs[i]);
-      if (d < bestD) { bestD = d; bestIdx = i; }
-    }
-    return bestIdx;
-  },
-
-  // Distancia del path (m)
-  _pathLengthM(path) {
-    let sum = 0;
-    for (let i = 0; i < path.length - 1; i++) sum += path[i].distanceTo(path[i + 1]);
-    return sum;
-  },
-
-  // --- Animación del bus (tu módulo original) ---
-  bus: {
-    marker: null,
-    animFrame: null,
-
-    stop() {
-      if (this.animFrame) {
-        cancelAnimationFrame(this.animFrame);
-        this.animFrame = null;
-      }
-      if (this.marker) {
-        this.marker.remove();
-        this.marker = null;
-      }
     },
 
-    start(polyline, opts = {}) {
-      const { speed = 8, loop = true, fitBounds = false } = opts;
 
-      this.stop();
+ 
+    //Animación de bus
+    bus: { 
+      marker: null,        
+      animFrame: null,      
 
-      const latlngs = polyline.getLatLngs().flat();
-      if (!latlngs || latlngs.length < 2) return;
+      stop() {            
+        if (this.animFrame) {
+          cancelAnimationFrame(this.animFrame);
+          this.animFrame = null;
+        }
+        if (this.marker) {
+          this.marker.remove();
+          this.marker = null;
+        }
+      },                   
 
-      if (fitBounds) {
-        const b = L.latLngBounds(latlngs);
-        polyline._map.fitBounds(b, { padding: [30, 30] });
-      }
+      /**
+       * Inicia la animación
+       * @param {L.Polyline} polyline
+       * @param {Object} opts
+       * @param {number}  [opts.speed=8]
+       * @param {boolean} [opts.loop=true]
+       * @param {boolean} [opts.fitBounds=false]
+       */
+      start(polyline, opts = {}) { // 🔹
+        const { speed = 8, loop = true, fitBounds = false } = opts;
 
-      const segments = [];
-      let totalDist = 0;
-      for (let i = 0; i < latlngs.length - 1; i++) {
-        const a = latlngs[i], b = latlngs[i + 1];
-        const d = a.distanceTo(b);
-        segments.push({ a, b, d, acc: totalDist });
-        totalDist += d;
-      }
-      if (totalDist === 0) return;
+        this.stop();
 
-      this.marker = L.marker(latlngs[0], {
-        icon: App.icons.bus,
-        zIndexOffset: 1000
-      }).addTo(polyline._map);
+        const latlngs = polyline.getLatLngs().flat();
+        if (!latlngs || latlngs.length < 2) return;
 
-      const tTotal = (totalDist / speed) * 1000;
-      let t0 = null;
+        if (fitBounds) {
+          const b = L.latLngBounds(latlngs);
+          polyline._map.fitBounds(b, { padding: [30, 30] });
+        }
 
-      const step = (ts) => {
-        if (!t0) t0 = ts;
-        const elapsed = ts - t0;
-        let dist = (elapsed / tTotal) * totalDist;
+        const segments = [];
+        let totalDist = 0;
+        for (let i = 0; i < latlngs.length - 1; i++) {
+          const a = latlngs[i], b = latlngs[i + 1];
+          const d = a.distanceTo(b);
+          segments.push({ a, b, d, acc: totalDist });
+          totalDist += d;
+        }
+        if (totalDist === 0) return;
 
-        if (dist >= totalDist) {
-          if (loop) {
-            t0 = ts;
-            dist = 0;
-          } else {
-            this.marker.setLatLng(latlngs[latlngs.length - 1]);
-            this.animFrame = null;
-            return;
+        this.marker = L.marker(latlngs[0], {
+          icon: App.icons.bus,
+          zIndexOffset: 1000
+        }).addTo(polyline._map);
+
+        const tTotal = (totalDist / speed) * 1000;
+        let t0 = null;
+
+        const step = (ts) => {
+          if (!t0) t0 = ts;
+          const elapsed = ts - t0;
+          let dist = (elapsed / tTotal) * totalDist;
+
+          if (dist >= totalDist) {
+            if (loop) {
+              t0 = ts;
+              dist = 0;
+            } else {
+              this.marker.setLatLng(latlngs[latlngs.length - 1]);
+              this.animFrame = null;
+              return;
+            }
           }
-        }
 
-        let seg = segments[0];
-        for (let i = 0; i < segments.length; i++) {
-          const s = segments[i];
-          if (dist <= s.acc + s.d) { seg = s; break; }
-        }
+          let seg = segments[0];
+          for (let i = 0; i < segments.length; i++) {
+            const s = segments[i];
+            if (dist <= s.acc + s.d) { seg = s; break; }
+          }
 
-        const segDist = dist - seg.acc;
-        const t = seg.d > 0 ? (segDist / seg.d) : 0;
-        const lat = seg.a.lat + (seg.b.lat - seg.a.lat) * t;
-        const lng = seg.a.lng + (seg.b.lng - seg.a.lng) * t;
+          const segDist = dist - seg.acc;
+          const t = seg.d > 0 ? (segDist / seg.d) : 0;
+          const lat = seg.a.lat + (seg.b.lat - seg.a.lat) * t;
+          const lng = seg.a.lng + (seg.b.lng - seg.a.lng) * t;
 
-        this.marker.setLatLng([lat, lng]);
+          this.marker.setLatLng([lat, lng]);
+          this.animFrame = requestAnimationFrame(step);
+        };
+
         this.animFrame = requestAnimationFrame(step);
-      };
+      } 
+    }  
 
-      this.animFrame = requestAnimationFrame(step);
-    }
-  }
 };
 
 document.addEventListener('DOMContentLoaded', () => App.init());

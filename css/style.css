@@ -500,18 +500,3 @@ hr {
   border-radius:6px;
   display:block;
 }
-
-/* --- Viaje: controles y estado --- */
-.trip-controls {
-  margin-top: 10px;
-  padding: 10px;
-  border: 1px dashed #adb5bd;
-  border-radius: 8px;
-  background: #fff;
-}
-.trip-controls .form-label { font-weight: 600; margin-bottom: 4px; }
-.trip-controls .row { row-gap: 10px; }
-.trip-msg { margin-top: 8px; font-size: .9rem; color: #495057; }
-.trip-progress { margin-top: 10px; }
-.trip-progress .progress { height: 10px; }
-.trip-progress .stats { display:flex; justify-content:space-between; font-size:.85rem; margin-top:6px; }
