@@ -163,15 +163,19 @@ const RUTA_INFO = {
 
 const App = {
   // --- Propiedades y Estado ---
-  map: null,
-  activeLayers: {},
-  userLocation: null,
-  isShowingAll: true,
-  isLocationActive: false,
-  routeData: [],
-  userLocationMarker: null,
-  activeRoute: null, // polyline invisible que usa la animación
-  selectionDefaults: { start: null, end: null, segmentLayer: null },
+    map: null,
+    activeLayers: {},
+    userLocation: null,
+    isShowingAll: true,
+    isLocationActive: false,
+    routeData: [],
+    userLocationMarker: null,
+    activeRoute: null, // polyline invisible que usa la animación
+    selectionDefaults: { start: null, end: null, segmentLayer: null },
+      watchId: null,
+    accuracyCircle: null,
+    followUser: true,  
+    lastUserLatLng: null,
 
   elements: {
     rutasLista: document.getElementById('rutasLista'),
@@ -237,6 +241,7 @@ const App = {
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
     }).addTo(this.map);
+    this.map.on('dragstart zoomstart', () => { this.followUser = false; });
   },
 
   // --- Lógica de Carga de Datos y Ubicación ---
@@ -279,26 +284,118 @@ const App = {
   },
 
   // --- NUEVA LÓGICA PARA EL BOTÓN FLOTANTE ---
-  async toggleUserLocation() {
+    async toggleUserLocation() {
     this.isLocationActive = !this.isLocationActive;
     this.elements.locationBtn.classList.toggle('active', this.isLocationActive);
+    this.elements.locationBtn.setAttribute('aria-pressed', this.isLocationActive ? 'true' : 'false');
+    this.elements.locationBtn.title = this.isLocationActive
+      ? 'Dejar de seguir mi ubicación'
+      : 'Seguir mi ubicación en tiempo real';
 
     if (this.isLocationActive) {
-      try {
-        await this.getUserLocation();
-        this.isShowingAll = false;
-      } catch {
-        this.isLocationActive = false;
-        this.elements.locationBtn.classList.remove('active');
-        this.isShowingAll = true;
-      }
+      this.followUser = true;     // al activar, centramos en cuanto llegue la 1ª fix
+      this.isShowingAll = false;  // modo “rutas cercanas”
+      this.startLiveLocation();
     } else {
-      this.isShowingAll = true;
-      if (this.userLocationMarker) {
-        this.map.removeLayer(this.userLocationMarker);
-        this.userLocationMarker = null;
-      }
+      this.stopLiveLocation();
+      this.isShowingAll = true;   // volver a “todas las rutas”
     }
+    this.updateToggleButtonText();
+    this.renderRouteList();
+  },
+
+  startLiveLocation() {
+    if (!navigator.geolocation) {
+      alert('La geolocalización no es compatible con tu navegador.');
+      this.isLocationActive = false;
+      this.elements.locationBtn.classList.remove('active');
+      this.elements.locationBtn.setAttribute('aria-pressed', 'false');
+      return;
+    }
+    const opts = { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 };
+    // Inicia el seguimiento continuo
+    this.watchId = navigator.geolocation.watchPosition(
+      (pos) => this._onLocationSuccess(pos),
+      (err) => this._onLocationError(err),
+      opts
+    );
+  },
+
+  stopLiveLocation() {
+    if (this.watchId !== null) {
+      navigator.geolocation.clearWatch(this.watchId);
+      this.watchId = null;
+    }
+    if (this.userLocationMarker) {
+      this.map.removeLayer(this.userLocationMarker);
+      this.userLocationMarker = null;
+    }
+    if (this.accuracyCircle) {
+      this.map.removeLayer(this.accuracyCircle);
+      this.accuracyCircle = null;
+    }
+    this.userLocation = null;
+    this.lastUserLatLng = null;
+  },
+
+  _onLocationSuccess(position) {
+    const { latitude, longitude, accuracy } = position.coords;
+    this.userLocation = { lat: latitude, lon: longitude, accuracy };
+
+    const latlng = [latitude, longitude];
+
+    // Crea/mueve el marcador del usuario
+    if (!this.userLocationMarker) {
+      this.userLocationMarker = L.marker(latlng, { icon: this.icons.ubicacion })
+        .addTo(this.map)
+        .bindPopup('<b>¡Estás aquí!</b>');
+      this.userLocationMarker.openPopup();
+    } else {
+      this.userLocationMarker.setLatLng(latlng);
+    }
+
+    // Círculo de precisión
+    if (!this.accuracyCircle) {
+      this.accuracyCircle = L.circle(latlng, {
+        radius: accuracy || 20,
+        color: '#1d4ed8',
+        weight: 1,
+        fillOpacity: 0.12
+      }).addTo(this.map);
+    } else {
+      this.accuracyCircle.setLatLng(latlng);
+      if (accuracy) this.accuracyCircle.setRadius(accuracy);
+    }
+
+    // Seguir al usuario mientras no mueva el mapa
+    if (this.followUser) {
+      const targetZoom = Math.max(this.map.getZoom() || 13, 16);
+      this.map.setView(latlng, targetZoom, { animate: true });
+    }
+
+    // Si estamos en modo “rutas cercanas”, re-render solo si nos movimos >50m
+    if (!this.isShowingAll) {
+      const nowLL = L.latLng(latlng);
+      const shouldRerender = !this.lastUserLatLng || this.lastUserLatLng.distanceTo(nowLL) > 50;
+      this.lastUserLatLng = nowLL;
+      if (shouldRerender) this.renderRouteList();
+    }
+  },
+
+  _onLocationError(err) {
+    console.warn('[RUTABUS] Geolocalización falló:', err);
+    const msg = err?.code === 1
+      ? 'Permite el acceso a la ubicación para poder mostrarte en el mapa.'
+      : 'No se pudo obtener tu ubicación. Inténtalo de nuevo.';
+    alert(msg);
+
+    this.isLocationActive = false;
+    this.elements.locationBtn.classList.remove('active');
+    this.elements.locationBtn.setAttribute('aria-pressed', 'false');
+    this.elements.locationBtn.title = 'Seguir mi ubicación en tiempo real';
+
+    this.stopLiveLocation();
+    this.isShowingAll = true;
     this.updateToggleButtonText();
     this.renderRouteList();
   },
