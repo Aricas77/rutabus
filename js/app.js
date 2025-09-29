@@ -558,7 +558,7 @@ const App = {
     const normalizedQuery = this.normalizeString(query);
     this.elements.rutasLista.innerHTML = '';
     const fragment = document.createDocumentFragment();
-    const radiusInKm = 1.5;
+    const radiusInKm = 0.25;
 
     let baseRoutes = this.routeData;
     if (!this.isShowingAll && this.userLocation) {
