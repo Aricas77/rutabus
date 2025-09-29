@@ -900,7 +900,9 @@ const App = {
       if (!a || !b) return false;
       return Math.abs(a.lat - b.lat) < 1e-5 && Math.abs(a.lng - b.lng) < 1e-5;
     };
+
     const pieces = [];
+    
     const collect = (lyr) => {
       if (!lyr) return;
       if (lyr instanceof L.Polyline && !(lyr instanceof L.Polygon)) {
@@ -911,6 +913,8 @@ const App = {
         lyr.getLayers().forEach(collect);
       }
     };
+
+
     collect(layer);
     if (pieces.length === 0) return [];
     pieces.sort((a, b) => b.length - a.length);
@@ -928,11 +932,14 @@ const App = {
         if (dStart < bestD) { bestD = dStart; bestIdx = i; bestRev = false; }
         if (dEnd < bestD) { bestD = dEnd; bestIdx = i; bestRev = true; }
       }
+      
+
       if (bestD > thresholdMeters) break;
       const chosen = pieces.splice(bestIdx, 1)[0];
       const seq = bestRev ? chosen.slice().reverse() : chosen;
       if (almostEqual(path[path.length - 1], seq[0])) path.pop();
       path.push(...seq);
+      
     }
     return path;
   },
