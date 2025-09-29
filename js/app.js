@@ -914,7 +914,6 @@ const App = {
       }
     };
 
-
     collect(layer);
     if (pieces.length === 0) return [];
     pieces.sort((a, b) => b.length - a.length);
@@ -939,7 +938,7 @@ const App = {
       const seq = bestRev ? chosen.slice().reverse() : chosen;
       if (almostEqual(path[path.length - 1], seq[0])) path.pop();
       path.push(...seq);
-      
+
     }
     return path;
   },
