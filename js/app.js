@@ -153,7 +153,7 @@ const RUTAS = [
     { id: "152", stop: "152", name: "Ruta 152: Circuito Precidentes - Rebsamen - Xalapa 2000 - Arco Sur - Trancas - Lazaro Cardenas - Ruiz Cortinez - Sauces - Velodromo" }
 ];
 
-// --- Datos de ejemplo para el detalle (puedes ampliar/editar) ---
+// --- Datos de ejemplo para el detalle de cada ruta ---
 const RUTA_INFO = {
   "001": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 37, duracionMin: 80, mujerSegura: false, foto: "./data/001/001.png" },
   "002": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 25, duracionMin: 86, mujerSegura: true, foto: "./data/002/002.png" },
@@ -232,8 +232,8 @@ const RUTA_INFO = {
   "075": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 46, mujerSegura: true, foto: "./data/074/074.png" },
   "076": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 60, mujerSegura: true, foto: "./data/076/076.png" },
   "077": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.86, duracionMin: 40, mujerSegura: false, foto: "./data/077/077.png" },
-  "078": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 12, duracionMin: 48, mujerSegura: false, foto: "./data/078/078.png" },
 
+  "078": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 12, duracionMin: 48, mujerSegura: false, foto: "./data/078/078.png" },
   "079": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13, duracionMin: 52, mujerSegura: false, foto: "./data/079/079.png" },
   "080": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 12,  duracionMin: 48, mujerSegura: false, foto: "./data/080/080.png" },
   "081": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.21, duracionMin: 37, mujerSegura: true,  foto: "./data/081/081.png" },
@@ -246,12 +246,12 @@ const RUTA_INFO = {
   "088": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 5, duracionMin: 20, mujerSegura: false, foto: "./data/088/088.png" },
   "089": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 5, duracionMin: 20, mujerSegura: true,  foto: "./data/089/089.png" },
   "090": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6,  duracionMin: 24, mujerSegura: false, foto: "./data/088/088.png" },
-  "091": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6, duracionMin: 24, mujerSegura: false, foto: "./data/091/091.png" },//
-  "092": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 3.72, duracionMin: 15, mujerSegura: false, foto: "./data/092/092.png" },//
-  "093": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13.9, duracionMin: 51, mujerSegura: false, foto: "./data/091/091.png" },//
-  "094": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 4.13, duracionMin: 17, mujerSegura: false, foto: "./data/091/091.png" },//
+  "091": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6, duracionMin: 24, mujerSegura: false, foto: "./data/091/091.png" },
+  "092": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 3.72, duracionMin: 15, mujerSegura: false, foto: "./data/092/092.png" },
+  "093": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13.9, duracionMin: 51, mujerSegura: false, foto: "./data/091/091.png" },
+  "094": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 4.13, duracionMin: 17, mujerSegura: false, foto: "./data/091/091.png" },
   "095": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.27, duracionMin: 41, mujerSegura: true,  foto: "./data/095/095.png" },
-  "096": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 8.56, duracionMin: 33, mujerSegura: false, foto: "./data/096/096.png" },//
+  "096": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 8.56, duracionMin: 33, mujerSegura: false, foto: "./data/096/096.png" },
   "097": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13.2, duracionMin: 50, mujerSegura: false, foto: "./data/097/097.png" },
   "098": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 15.0, duracionMin: 55, mujerSegura: false, foto: "./data/098/098.png" },
   "099": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 12.6, duracionMin: 46, mujerSegura: false, foto: "./data/099/099.png" },
