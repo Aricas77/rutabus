@@ -315,19 +315,27 @@ const RUTA_INFO = {
 
 const App = {
   // --- Propiedades y Estado ---
-    map: null,
-    activeLayers: {},
-    userLocation: null,
-    isShowingAll: true,
-    isLocationActive: false,
-    routeData: [],
-    userLocationMarker: null,
-    activeRoute: null, // polyline invisible que usa la animación
-    selectionDefaults: { start: null, end: null, segmentLayer: null },
-      watchId: null,
-    accuracyCircle: null,
-    followUser: true,  
-    lastUserLatLng: null,
+  map: null,
+  activeLayers: {},
+  userLocation: null,
+  isShowingAll: true,
+  isLocationActive: false,
+  routeData: [],
+  userLocationMarker: null,
+  activeRoute: null, 
+  selectionDefaults: { start: null, end: null, segmentLayer: null },
+  watchId: null,
+  accuracyCircle: null,
+  followUser: true,
+  lastUserLatLng: null,
+
+
+  settings: {
+    nearbyRadiusKm: 0.3,
+    showAccuracyCircle: false 
+  },
+
+  proximityCircle: null,
 
   elements: {
     rutasLista: document.getElementById('rutasLista'),
@@ -394,6 +402,13 @@ const App = {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
     }).addTo(this.map);
     this.map.on('dragstart zoomstart', () => { this.followUser = false; });
+
+    // 🔵 NUEVO: si el radio depende del zoom, actualiza el círculo de proximidad al terminar zoom
+    this.map.on('zoomend', () => {
+      if (this.proximityCircle && this.userLocation) {
+        this.proximityCircle.setRadius(this.getCurrentNearbyRadiusKm() * 1000);
+      }
+    });
   },
 
   // --- Lógica de Carga de Datos y Ubicación ---
@@ -436,7 +451,7 @@ const App = {
   },
 
   // --- NUEVA LÓGICA PARA EL BOTÓN FLOTANTE ---
-    async toggleUserLocation() {
+  async toggleUserLocation() {
     this.isLocationActive = !this.isLocationActive;
     this.elements.locationBtn.classList.toggle('active', this.isLocationActive);
     this.elements.locationBtn.setAttribute('aria-pressed', this.isLocationActive ? 'true' : 'false');
@@ -486,6 +501,11 @@ const App = {
       this.map.removeLayer(this.accuracyCircle);
       this.accuracyCircle = null;
     }
+    // 🔵 NUEVO: limpiar círculo de proximidad
+    if (this.proximityCircle) {
+      this.map.removeLayer(this.proximityCircle);
+      this.proximityCircle = null;
+    }
     this.userLocation = null;
     this.lastUserLatLng = null;
   },
@@ -506,17 +526,21 @@ const App = {
       this.userLocationMarker.setLatLng(latlng);
     }
 
-    // Círculo de precisión
-    if (!this.accuracyCircle) {
-      this.accuracyCircle = L.circle(latlng, {
-        radius: accuracy || 20,
+    // Círculo de precisión (GPS)
+    
+
+    // 🔵 NUEVO: Círculo de proximidad (radio lógico para rutas/paradas cercanas)
+    const radiusMeters = this.getCurrentNearbyRadiusKm() * 1000;
+    if (!this.proximityCircle) {
+      this.proximityCircle = L.circle(latlng, {
+        radius: radiusMeters,
         color: '#1d4ed8',
-        weight: 1,
-        fillOpacity: 0.12
+        weight: 2,
+        fillOpacity: 0.08
       }).addTo(this.map);
     } else {
-      this.accuracyCircle.setLatLng(latlng);
-      if (accuracy) this.accuracyCircle.setRadius(accuracy);
+      this.proximityCircle.setLatLng(latlng);
+      this.proximityCircle.setRadius(radiusMeters);
     }
 
     // Seguir al usuario mientras no mueva el mapa
@@ -526,11 +550,13 @@ const App = {
     }
 
     // Si estamos en modo “rutas cercanas”, re-render solo si nos movimos >50m
+    const nowLL = L.latLng(latlng);
     if (!this.isShowingAll) {
-      const nowLL = L.latLng(latlng);
       const shouldRerender = !this.lastUserLatLng || this.lastUserLatLng.distanceTo(nowLL) > 50;
       this.lastUserLatLng = nowLL;
       if (shouldRerender) this.renderRouteList();
+    } else {
+      this.lastUserLatLng = nowLL;
     }
   },
 
@@ -558,7 +584,9 @@ const App = {
     const normalizedQuery = this.normalizeString(query);
     this.elements.rutasLista.innerHTML = '';
     const fragment = document.createDocumentFragment();
-    const radiusInKm = 0.25;
+
+    // ✏️ CAMBIO: usar el mismo radio que muestra el círculo de proximidad
+    const radiusInKm = this.getCurrentNearbyRadiusKm();
 
     let baseRoutes = this.routeData;
     if (!this.isShowingAll && this.userLocation) {
@@ -667,6 +695,20 @@ const App = {
       Math.sin(dLon/2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
+  },
+
+  // 🔵 NUEVO: fuente única de verdad para el radio de proximidad
+  getCurrentNearbyRadiusKm() {
+    if (this.settings?.nearbyRadiusKm != null) return this.settings.nearbyRadiusKm;
+
+    // Si prefieres dinámico por zoom, ajusta la tabla a tu gusto:
+    const z = this.map?.getZoom() ?? 15;
+    if (z >= 18) return 0.15; // 150 m
+    if (z >= 17) return 0.25;
+    if (z >= 16) return 0.35;
+    if (z >= 15) return 0.6;
+    if (z >= 14) return 0.9;
+    return 1.2; // zoom lejano
   },
 
   async toggleRuta(buttonEl) {
@@ -931,14 +973,12 @@ const App = {
         if (dStart < bestD) { bestD = dStart; bestIdx = i; bestRev = false; }
         if (dEnd < bestD) { bestD = dEnd; bestIdx = i; bestRev = true; }
       }
-      
 
       if (bestD > thresholdMeters) break;
       const chosen = pieces.splice(bestIdx, 1)[0];
       const seq = bestRev ? chosen.slice().reverse() : chosen;
       if (almostEqual(path[path.length - 1], seq[0])) path.pop();
       path.push(...seq);
-
     }
     return path;
   },
