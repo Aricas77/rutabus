@@ -1,16 +1,23 @@
-// --- Inicialización del Mapa del Administrador ---
+/**
+ * Configuración inicial del mapa para el panel de administración
+ * Utiliza la biblioteca Leaflet para renderizar el mapa centrado en Xalapa
+ */
 const adminMap = L.map("admin-map").setView([19.5438, -96.9103], 13);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
 }).addTo(adminMap);
 
-// --- Configuración de las Herramientas de Dibujo ---
+/**
+ * Configuración de las herramientas de dibujo en el mapa
+ * Permite dibujar líneas (rutas) y colocar marcadores (paradas)
+ */
 const drawnItems = new L.FeatureGroup();
 adminMap.addLayer(drawnItems);
 
 const drawControl = new L.Control.Draw({
     edit: { featureGroup: drawnItems, remove: true },
     draw: {
+        // Deshabilitamos todas las formas excepto polyline (ruta) y marker (paradas)
         polygon: false, rectangle: false, circle: false, circlemarker: false,
         polyline: { shapeOptions: { color: '#2b6cb0', weight: 5 } },
         marker: {
@@ -24,11 +31,18 @@ const drawControl = new L.Control.Draw({
 });
 adminMap.addControl(drawControl);
 
-// --- Variables para guardar los datos dibujados ---
+/**
+ * Variables para almacenar los datos de la ruta y paradas
+ * rutaGeoJSON: Almacena la línea de la ruta en formato GeoJSON
+ * paradasGeoJSON: Array que almacena todas las paradas en formato GeoJSON
+ */
 let rutaGeoJSON = null;
 let paradasGeoJSON = [];
 
-// --- Lógica para Capturar los Dibujos ---
+/**
+ * Evento que se dispara cuando se crea un nuevo elemento en el mapa
+ * Maneja la creación de rutas (polyline) y paradas (marker)
+ */
 adminMap.on(L.Draw.Event.CREATED, function (event) {
     const layer = event.layer;
     const type = event.layerType;
@@ -54,7 +68,10 @@ adminMap.on(L.Draw.Event.CREATED, function (event) {
     drawnItems.addLayer(layer);
 });
 
-// Evento cuando se borra una capa, para mantener nuestros datos actualizados
+/**
+ * Evento que se dispara cuando se elimina un elemento del mapa
+ * Actualiza las variables de ruta y paradas según corresponda
+ */
 adminMap.on('draw:deleted', function(e) {
     e.layers.eachLayer(function(layer) {
         if (layer instanceof L.Polyline) {
@@ -70,18 +87,24 @@ adminMap.on('draw:deleted', function(e) {
     });
 });
 
-
-// --- Lógica del Formulario ---
+/**
+ * Configuración y manejo del formulario de rutas
+ * Obtiene referencias a los elementos del formulario y configura el evento de envío
+ */
 const routeForm = document.getElementById('route-form');
 const routeNameInput = document.getElementById('routeName');
 const routeIdInput = document.getElementById('routeId');
 const routeStopInput = document.getElementById('routeStop');
 const messageDiv = document.getElementById('admin-message');
 
+/**
+ * Manejador del evento submit del formulario
+ * Valida los datos, construye el objeto de ruta y lo envía al servidor
+ */
 routeForm.addEventListener('submit', async function(event) {
     event.preventDefault();
 
-    // 1. Validar que se haya dibujado todo lo necesario
+    // Validaciones
     if (!rutaGeoJSON) {
         showMessage('error', 'Error: Debes dibujar la línea de la ruta en el mapa.');
         return;
@@ -91,16 +114,16 @@ routeForm.addEventListener('submit', async function(event) {
         return;
     }
 
-    // 2. Construir el objeto de datos para enviar al servidor
+    // Construcción del objeto de datos
     const routeData = {
         nombre: routeNameInput.value,
         id: routeIdInput.value,
         stop: routeStopInput.value,
-        rutaGeoJSON: rutaGeoJSON, // La línea
-        paradasGeoJSON: paradasGeoJSON // El arreglo de puntos
+        rutaGeoJSON: rutaGeoJSON,
+        paradasGeoJSON: paradasGeoJSON
     };
 
-    // 3. Enviar los datos usando fetch
+    // Envío de datos al servidor
     try {
         const response = await fetch('/api/rutas', {
             method: 'POST',
@@ -112,7 +135,7 @@ routeForm.addEventListener('submit', async function(event) {
 
         if (result.success) {
             showMessage('success', result.message);
-            // Limpiar todo para la siguiente ruta
+            // Limpieza del formulario y el mapa
             routeForm.reset();
             drawnItems.clearLayers();
             rutaGeoJSON = null;
@@ -127,12 +150,17 @@ routeForm.addEventListener('submit', async function(event) {
     }
 });
 
-// Función para mostrar mensajes al administrador
+/**
+ * Función auxiliar para mostrar mensajes al administrador
+ * @param {string} type - Tipo de mensaje ('success' o 'error')
+ * @param {string} text - Texto del mensaje a mostrar
+ */
 function showMessage(type, text) {
     messageDiv.style.display = 'block';
     messageDiv.textContent = text;
     messageDiv.className = type === 'success' ? 'alert alert-success' : 'alert alert-danger';
 
+    // El mensaje se oculta automáticamente después de 4 segundos
     setTimeout(() => {
         messageDiv.style.display = 'none';
     }, 4000);
