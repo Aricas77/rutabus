@@ -423,7 +423,7 @@ const App = {
       this.renderTrafficList();
     });
 
-  },
+  }, 
 
   // --- Lógica de Carga de Datos y Ubicación ---
   async fetchAllRouteData() {
