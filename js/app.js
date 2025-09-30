@@ -450,7 +450,7 @@ const App = {
     });
   },
 
-  // --- NUEVA LÓGICA PARA EL BOTÓN FLOTANTE ---
+  
   async toggleUserLocation() {
     this.isLocationActive = !this.isLocationActive;
     this.elements.locationBtn.classList.toggle('active', this.isLocationActive);
@@ -501,7 +501,7 @@ const App = {
       this.map.removeLayer(this.accuracyCircle);
       this.accuracyCircle = null;
     }
-    // 🔵 NUEVO: limpiar círculo de proximidad
+    
     if (this.proximityCircle) {
       this.map.removeLayer(this.proximityCircle);
       this.proximityCircle = null;
@@ -528,8 +528,6 @@ const App = {
 
     // Círculo de precisión (GPS)
     
-
-    // 🔵 NUEVO: Círculo de proximidad (radio lógico para rutas/paradas cercanas)
     const radiusMeters = this.getCurrentNearbyRadiusKm() * 1000;
     if (!this.proximityCircle) {
       this.proximityCircle = L.circle(latlng, {
@@ -549,7 +547,7 @@ const App = {
       this.map.setView(latlng, targetZoom, { animate: true });
     }
 
-    // Si estamos en modo “rutas cercanas”, re-render solo si nos movimos >50m
+
     const nowLL = L.latLng(latlng);
     if (!this.isShowingAll) {
       const shouldRerender = !this.lastUserLatLng || this.lastUserLatLng.distanceTo(nowLL) > 50;
@@ -585,7 +583,7 @@ const App = {
     this.elements.rutasLista.innerHTML = '';
     const fragment = document.createDocumentFragment();
 
-    // ✏️ CAMBIO: usar el mismo radio que muestra el círculo de proximidad
+    
     const radiusInKm = this.getCurrentNearbyRadiusKm();
 
     let baseRoutes = this.routeData;
@@ -697,11 +695,11 @@ const App = {
     return R * c;
   },
 
-  // 🔵 NUEVO: fuente única de verdad para el radio de proximidad
+  
   getCurrentNearbyRadiusKm() {
     if (this.settings?.nearbyRadiusKm != null) return this.settings.nearbyRadiusKm;
 
-    // Si prefieres dinámico por zoom, ajusta la tabla a tu gusto:
+    
     const z = this.map?.getZoom() ?? 15;
     if (z >= 18) return 0.15; // 150 m
     if (z >= 17) return 0.25;
