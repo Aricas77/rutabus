@@ -1,0 +1,16 @@
+[
+  {
+    "id": "a-001",
+    "tipo": "congestion",
+    "severidad": 3,
+    "descripcion": "Carga pesada en Lázaro Cárdenas",
+    "coord": { "lat": 19.5321, "lng": -96.9153 },
+    "radio": 120,
+    "rutaId": "070",
+    "segment": { "fromStop": "3", "toStop": "10" },
+    "inicio": "2025-09-30T04:30:00Z",
+    "expira": "2025-09-30T07:30:00Z",
+    "fuente": "usuario",
+    "estado": "aprobada"
+  }
+]

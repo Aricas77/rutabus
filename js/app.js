@@ -409,6 +409,20 @@ const App = {
         this.proximityCircle.setRadius(this.getCurrentNearbyRadiusKm() * 1000);
       }
     });
+
+        // [TRAFFIC INIT] --- capa y refs de UI
+    this.traffic.layer = L.layerGroup().addTo(this.map);
+
+    this.traffic.listContainer = document.getElementById('trafficList');
+    this.$toggleTrafficBtn = document.getElementById('toggleTrafficBtn');
+
+    // Botón "Ver Alertas de Tráfico"
+    this.$toggleTrafficBtn?.addEventListener('click', async () => {
+      await this.fetchTrafficAlerts();
+      this.renderTraffic();
+      this.renderTrafficList();
+    });
+
   },
 
   // --- Lógica de Carga de Datos y Ubicación ---
@@ -1185,7 +1199,156 @@ const App = {
 
       this.animFrame = requestAnimationFrame(step);
     }
+  },
+
+    //Funcion de trafico
+    traffic: {
+    layer: null,           // L.LayerGroup
+    alerts: [],            // array del JSON
+    listContainer: null    // <ul> en sidebar para listar
+  },
+
+  // === ALERTAS DE TRÁFICO ===
+async fetchTrafficAlerts() {
+  try {
+    const res = await fetch('./data/traffic/alerts.json', { cache: 'no-store' });
+    const all = await res.json();
+    const now = Date.now();
+    this.traffic.alerts = all.filter(a => {
+      const exp = a.expira ? Date.parse(a.expira) : now + 3600000;
+      return (a.estado === 'aprobada') && (exp > now);
+    });
+  } catch (e) {
+    console.error('Error cargando alerts.json', e);
+    this.traffic.alerts = [];
   }
+},
+
+renderTraffic() {
+  if (!this.traffic.layer) return;
+  this.traffic.layer.clearLayers();
+
+  this.traffic.alerts.forEach(a => {
+    const sev = Number(a.severidad) || 1;
+    const color = sev >= 5 ? '#dc2626' : sev >= 3 ? '#f59e0b' : '#22c55e';
+
+    // Punto
+    if (a.coord) {
+      const m = L.circleMarker([a.coord.lat, a.coord.lng], {
+        radius: 8,
+        weight: 2,
+        color: '#111',
+        fillColor: color,
+        fillOpacity: 0.85
+      }).bindPopup(`
+        <strong>${(a.tipo || 'Incidente').toUpperCase()}</strong>
+        <div>${a.descripcion || ''}</div>
+        <div>Severidad: ${sev}${a.rutaId ? ` · Ruta ${a.rutaId}` : ''}</div>
+      `);
+      m.addTo(this.traffic.layer);
+
+      if (a.radio && a.radio > 0) {
+        L.circle([a.coord.lat, a.coord.lng], {
+          radius: a.radio,
+          color,
+          weight: 2,
+          dashArray: '4 4',
+          fillOpacity: 0.08
+        }).addTo(this.traffic.layer);
+      }
+    }
+
+    // Tramo opcional
+    if (a.rutaId && a.segment && a.segment.fromStop && a.segment.toStop) {
+      this._renderTrafficSegment(a).catch(err =>
+        console.warn('No se pudo pintar segmento', a.id, err)
+      );
+    }
+  });
+},
+
+renderTrafficList() {
+  const ul = this.traffic.listContainer;
+  if (!ul) return;
+  ul.innerHTML = '';
+
+  const pos = this.user?.coords || null;
+
+  const items = this.traffic.alerts
+    .map(a => {
+      let distKm = null;
+      if (pos && a.coord) {
+        const p1 = L.latLng(pos.lat, pos.lng);
+        const p2 = L.latLng(a.coord.lat, a.coord.lng);
+        distKm = p1.distanceTo(p2) / 1000;
+      }
+      return { a, distKm };
+    })
+    .sort((x, y) => {
+      if (x.distKm == null && y.distKm == null) return 0;
+      if (x.distKm == null) return 1;
+      if (y.distKm == null) return -1;
+      return x.distKm - y.distKm;
+    });
+
+  items.forEach(({ a, distKm }) => {
+    const li = document.createElement('li');
+    li.className = 'list-group-item d-flex justify-content-between align-items-start';
+
+    const sev = Number(a.severidad) || 1;
+    const chip = `<span class="badge rounded-pill ${sev>=5?'bg-danger':sev>=3?'bg-warning text-dark':'bg-success'}">S${sev}</span>`;
+    const ruta = a.rutaId ? `<span class="badge bg-dark ms-1">Ruta ${a.rutaId}</span>` : '';
+    const distTxt = distKm != null ? `${distKm.toFixed(2)} km` : '';
+
+    li.innerHTML = `
+      <div class="me-auto">
+        <div class="fw-semibold text-uppercase">${a.tipo || 'Incidente'} ${chip} ${ruta}</div>
+        <small>${a.descripcion || ''}</small>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary">Centrar</button>
+      <div class="ms-2 text-nowrap"><small>${distTxt}</small></div>
+    `;
+
+    li.querySelector('button').addEventListener('click', () => {
+      if (a.coord) {
+        this.map.setView([a.coord.lat, a.coord.lng], Math.max(this.map.getZoom(), 15));
+      }
+    });
+
+    ul.appendChild(li);
+  });
+
+  if (!items.length) {
+    const li = document.createElement('li');
+    li.className = 'list-group-item';
+    li.textContent = 'Sin alertas vigentes.';
+    ul.appendChild(li);
+  }
+},
+
+  // Opcional: pintar tramo afectado si tienes stops/latlngs por ruta
+  async _renderTrafficSegment(alerta) {
+    let latlngs = this.routeLatLngs?.[alerta.rutaId];
+    if (!latlngs) {
+      const geo = await this.fetchGeoJSON(`./data/${alerta.rutaId}/route.json`);
+      latlngs = this._extractLatLngsFromGeoJSON(geo);
+    }
+
+    const stops = this.routeStops?.[alerta.rutaId];
+    if (!stops || !latlngs) return;
+
+    const iA = stops.findIndex(s => String(s.id) === String(alerta.segment.fromStop));
+    const iB = stops.findIndex(s => String(s.id) === String(alerta.segment.toStop));
+    if (iA < 0 || iB < 0) return;
+
+    const start = Math.min(iA, iB);
+    const end   = Math.max(iA, iB);
+    const segLatLngs = latlngs.slice(start, end + 1);
+
+    L.polyline(segLatLngs, { color: '#e11d48', weight: 6, opacity: 0.9 })
+      .addTo(this.traffic.layer);
+  },
+
 };
 
 document.addEventListener('DOMContentLoaded', () => App.init());
