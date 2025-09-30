@@ -322,17 +322,19 @@ const App = {
   isLocationActive: false,
   routeData: [],
   userLocationMarker: null,
-  activeRoute: null, 
+  activeRoute: null,
   selectionDefaults: { start: null, end: null, segmentLayer: null },
   watchId: null,
   accuracyCircle: null,
   followUser: true,
   lastUserLatLng: null,
 
+  // cache opcional para latlngs por ruta
+  routePathCache: {},
 
   settings: {
     nearbyRadiusKm: 0.3,
-    showAccuracyCircle: false 
+    showAccuracyCircle: false
   },
 
   proximityCircle: null,
@@ -403,27 +405,22 @@ const App = {
     }).addTo(this.map);
     this.map.on('dragstart zoomstart', () => { this.followUser = false; });
 
-    // 🔵 NUEVO: si el radio depende del zoom, actualiza el círculo de proximidad al terminar zoom
     this.map.on('zoomend', () => {
       if (this.proximityCircle && this.userLocation) {
         this.proximityCircle.setRadius(this.getCurrentNearbyRadiusKm() * 1000);
       }
     });
 
-        // [TRAFFIC INIT] --- capa y refs de UI
+    // [TRAFFIC INIT]
     this.traffic.layer = L.layerGroup().addTo(this.map);
-
     this.traffic.listContainer = document.getElementById('trafficList');
     this.$toggleTrafficBtn = document.getElementById('toggleTrafficBtn');
-
-    // Botón "Ver Alertas de Tráfico"
     this.$toggleTrafficBtn?.addEventListener('click', async () => {
       await this.fetchTrafficAlerts();
       this.renderTraffic();
       this.renderTrafficList();
     });
-
-  }, 
+  },
 
   // --- Lógica de Carga de Datos y Ubicación ---
   async fetchAllRouteData() {
@@ -464,7 +461,6 @@ const App = {
     });
   },
 
-  
   async toggleUserLocation() {
     this.isLocationActive = !this.isLocationActive;
     this.elements.locationBtn.classList.toggle('active', this.isLocationActive);
@@ -474,12 +470,12 @@ const App = {
       : 'Seguir mi ubicación en tiempo real';
 
     if (this.isLocationActive) {
-      this.followUser = true;     // al activar, centramos en cuanto llegue la 1ª fix
-      this.isShowingAll = false;  // modo “rutas cercanas”
+      this.followUser = true;
+      this.isShowingAll = false;
       this.startLiveLocation();
     } else {
       this.stopLiveLocation();
-      this.isShowingAll = true;   // volver a “todas las rutas”
+      this.isShowingAll = true;
     }
     this.updateToggleButtonText();
     this.renderRouteList();
@@ -494,7 +490,6 @@ const App = {
       return;
     }
     const opts = { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 };
-    // Inicia el seguimiento continuo
     this.watchId = navigator.geolocation.watchPosition(
       (pos) => this._onLocationSuccess(pos),
       (err) => this._onLocationError(err),
@@ -515,7 +510,6 @@ const App = {
       this.map.removeLayer(this.accuracyCircle);
       this.accuracyCircle = null;
     }
-    
     if (this.proximityCircle) {
       this.map.removeLayer(this.proximityCircle);
       this.proximityCircle = null;
@@ -527,10 +521,8 @@ const App = {
   _onLocationSuccess(position) {
     const { latitude, longitude, accuracy } = position.coords;
     this.userLocation = { lat: latitude, lon: longitude, accuracy };
-
     const latlng = [latitude, longitude];
 
-    // Crea/mueve el marcador del usuario
     if (!this.userLocationMarker) {
       this.userLocationMarker = L.marker(latlng, { icon: this.icons.ubicacion })
         .addTo(this.map)
@@ -540,8 +532,6 @@ const App = {
       this.userLocationMarker.setLatLng(latlng);
     }
 
-    // Círculo de precisión (GPS)
-    
     const radiusMeters = this.getCurrentNearbyRadiusKm() * 1000;
     if (!this.proximityCircle) {
       this.proximityCircle = L.circle(latlng, {
@@ -555,12 +545,10 @@ const App = {
       this.proximityCircle.setRadius(radiusMeters);
     }
 
-    // Seguir al usuario mientras no mueva el mapa
     if (this.followUser) {
       const targetZoom = Math.max(this.map.getZoom() || 13, 16);
       this.map.setView(latlng, targetZoom, { animate: true });
     }
-
 
     const nowLL = L.latLng(latlng);
     if (!this.isShowingAll) {
@@ -597,7 +585,6 @@ const App = {
     this.elements.rutasLista.innerHTML = '';
     const fragment = document.createDocumentFragment();
 
-    
     const radiusInKm = this.getCurrentNearbyRadiusKm();
 
     let baseRoutes = this.routeData;
@@ -639,7 +626,6 @@ const App = {
           li.classList.add('active');
         }
 
-        // Panel de detalles
         const info = RUTA_INFO[ruta.id];
         const detalle = document.createElement('div');
         detalle.className = 'route-details';
@@ -709,18 +695,15 @@ const App = {
     return R * c;
   },
 
-  
   getCurrentNearbyRadiusKm() {
     if (this.settings?.nearbyRadiusKm != null) return this.settings.nearbyRadiusKm;
-
-    
     const z = this.map?.getZoom() ?? 15;
-    if (z >= 18) return 0.15; // 150 m
+    if (z >= 18) return 0.15;
     if (z >= 17) return 0.25;
     if (z >= 16) return 0.35;
     if (z >= 15) return 0.6;
     if (z >= 14) return 0.9;
-    return 1.2; // zoom lejano
+    return 1.2;
   },
 
   async toggleRuta(buttonEl) {
@@ -749,57 +732,36 @@ const App = {
       const routeLayer = L.geoJSON(geoRuta, { style: { color: "green", weight: 4 } }).addTo(this.map);
       this.activeLayers[rutaId].routeLayer = routeLayer;
 
-      // Guardar latlngs del trazado en orden para cortes de segmento
-      let latlngs = this._stitchLatLngsFromLayer(routeLayer, 80);
-      if (!latlngs || latlngs.length < 2) {
-        latlngs = this._extractLatLngsFromGeoJSON(geoRuta).map(([lat, lng]) => L.latLng(lat, lng));
-      } else {
-        latlngs = latlngs.map(ll => L.latLng(ll.lat, ll.lng));
+      // Camino: circuito de cobertura que visita todos los componentes
+      let latlngs = this.routePathCache[rutaId];
+      if (!latlngs) {
+        latlngs = this._buildCoverageLoopFromGeoJSON(geoRuta, {
+          connectThreshold: 25,  // metros para considerar continuidad real
+          resampleEvery: 8       // densidad de puntos
+        });
+        this.routePathCache[rutaId] = latlngs;
       }
+
       this.activeLayers[rutaId].routeLatLngs = latlngs;
 
-      const bounds = routeLayer.getBounds();
+      const bounds = L.latLngBounds(latlngs);
       if (bounds.isValid()) {
         this.map.fitBounds(bounds, { padding: [20, 20] });
       }
     }
 
-    // Preparar animación estándar (ronda completa) si no hay selección activa
-    try {
-      setTimeout(() => {
-        let latlngs = this._stitchLatLngsFromLayer(this.activeLayers[rutaId].routeLayer, 80);
-        if (!latlngs || latlngs.length < 2) {
-          const geom = geoRuta?.features;
-          const all = [];
-          if (Array.isArray(geom)) {
-            for (const f of geom) {
-              const g = f.geometry;
-              if (!g) continue;
-              if (g.type === 'LineString') {
-                all.push(...g.coordinates.map(([lng, lat]) => [lat, lng]));
-              } else if (g.type === 'MultiLineString') {
-                for (const line of g.coordinates) {
-                  all.push(...line.map(([lng, lat]) => [lat, lng]));
-                }
-              }
-            }
-          }
-          latlngs = all;
-        }
-        if (latlngs && latlngs.length >= 2) {
-          if (this.activeRoute) {
-            this.map.removeLayer(this.activeRoute);
-            this.activeRoute = null;
-          }
-          this.bus.stop();
-          this.activeRoute = L.polyline(latlngs, { opacity: 0, weight: 0 }).addTo(this.map);
-          this.bus.start(this.activeRoute, { speed: 250, loop: true, fitBounds: false });
-        } else {
-          console.warn('[RUTABUS] No se pudo construir latlngs para animar el bus.');
-        }
-      }, 0);
-    } catch (e) {
-      console.error('[RUTABUS] Error preparando animación del bus:', e);
+    // Animación base (recorre todo el circuito y hace loop)
+    const baseLatLngs = this.activeLayers[rutaId]?.routeLatLngs;
+    if (baseLatLngs && baseLatLngs.length >= 2) {
+      if (this.activeRoute) {
+        this.bus.stop();
+        this.map.removeLayer(this.activeRoute);
+        this.activeRoute = null;
+      }
+      this.activeRoute = L.polyline(baseLatLngs, { opacity: 0, weight: 0 }).addTo(this.map);
+      this.bus.start(this.activeRoute, { speed: 5000, loop: true, fitBounds: false });
+    } else {
+      console.warn('[RUTABUS] No se pudo construir latlngs para animar el bus.');
     }
 
     if (geoStops) {
@@ -813,8 +775,6 @@ const App = {
         }
       }).addTo(this.map);
       this.activeLayers[rutaId].stopLayer = stopLayer;
-
-      // inicializa contenedor de selección para esta ruta
       this.activeLayers[rutaId].selection = { start: null, end: null, segmentLayer: null };
     }
 
@@ -826,8 +786,6 @@ const App = {
 
   removeRoute(rutaId, buttonEl, listItemEl) {
     const entry = this.activeLayers[rutaId];
-
-    // limpiar selección/segmento si existía
     if (entry?.selection) this._resetSelection(rutaId);
 
     const layers = this.activeLayers[rutaId];
@@ -839,7 +797,6 @@ const App = {
 
     delete this.activeLayers[rutaId];
 
-    // Detener animación si no quedan rutas activas
     if (Object.keys(this.activeLayers).length === 0) {
       if (this.activeRoute) {
         this.bus.stop();
@@ -900,10 +857,7 @@ const App = {
 
     this.elements.toggleRoutesBtn.addEventListener('click', () => {
       this.isShowingAll = !this.isShowingAll;
-
-      // limpiar selecciones activas cuando se cambia el modo
       Object.keys(this.activeLayers).forEach(rid => this._resetSelection(rid));
-
       this.updateToggleButtonText();
       this.renderRouteList();
     });
@@ -928,7 +882,7 @@ const App = {
     });
   },
 
-  // --- Funciones de Ayuda (Helpers) ---
+  // --- Helpers de red / util ---
   async fetchGeoJSON(url) {
     try {
       const res = await fetch(url, { cache: "no-cache" });
@@ -948,68 +902,181 @@ const App = {
       .replace(/[\u0300-\u036f]/g, '');
   },
 
-  // Une todas las polylines del L.geoJSON en un solo camino continuo.
-  _stitchLatLngsFromLayer(layer, thresholdMeters = 80) {
-    const almostEqual = (a, b) => {
-      if (!a || !b) return false;
-      return Math.abs(a.lat - b.lat) < 1e-5 && Math.abs(a.lng - b.lng) < 1e-5;
-    };
+  // --- Geometría robusta ---
 
-    const pieces = [];
-    
-    const collect = (lyr) => {
-      if (!lyr) return;
-      if (lyr instanceof L.Polyline && !(lyr instanceof L.Polygon)) {
-        const arr = lyr.getLatLngs();
-        const flat = Array.isArray(arr[0]) ? arr.flat() : arr;
-        if (flat.length >= 2) pieces.push(flat);
-      } else if (typeof lyr.getLayers === 'function') {
-        lyr.getLayers().forEach(collect);
-      }
-    };
-
-    collect(layer);
+  // Devuelve un recorrido que cubre TODO: conecta componentes por cercanía y “salta” entre componentes
+  _buildCoverageLoopFromGeoJSON(geojson, { connectThreshold = 25, resampleEvery = 8 } = {}) {
+    const pieces = this._extractPieces(geojson); // arrays de L.LatLng
     if (pieces.length === 0) return [];
-    pieces.sort((a, b) => b.length - a.length);
-    const path = pieces.shift().slice();
-    const dist = (a, b) => a.distanceTo(b);
-    while (pieces.length) {
-      const last = path[path.length - 1];
-      let bestIdx = -1;
-      let bestRev = false;
-      let bestD = Infinity;
-      for (let i = 0; i < pieces.length; i++) {
-        const p = pieces[i];
-        const dStart = dist(last, p[0]);
-        const dEnd = dist(last, p[p.length - 1]);
-        if (dStart < bestD) { bestD = dStart; bestIdx = i; bestRev = false; }
-        if (dEnd < bestD) { bestD = dEnd; bestIdx = i; bestRev = true; }
+
+    // 1) Construir primer camino (tronco)
+    const main = this._connectPieces(pieces.slice(), connectThreshold);
+
+    // 2) Recolectar piezas no usadas (las que no pudieron unirse dentro del umbral)
+    const usedFlags = new WeakSet([main]); // dummy para no usar main
+    const remaining = [];
+    for (const p of pieces) remaining.push(p);
+
+    // El algoritmo de _connectPieces ya consumió algunas piezas,
+    // pero aquí no llevamos flags internos; calculamos componentes desconectados
+    // por proximidad: agrupamos piezas cuyo extremo está a <= connectThreshold del main.
+    const closeTo = (a, b, thr) => a.distanceTo(b) <= thr;
+
+    // Separamos componentes por cercanía al "main"
+    const endpoints = (arr) => [arr[0], arr[arr.length - 1]];
+    const thr = connectThreshold;
+
+    const attached = [main.slice()];
+    const unattached = [];
+
+    for (const seg of remaining) {
+      const [s, e] = endpoints(seg);
+      const [ms, me] = endpoints(main);
+      const nearMain = closeTo(s, ms, thr) || closeTo(s, me, thr) || closeTo(e, ms, thr) || closeTo(e, me, thr);
+      if (!nearMain) unattached.push(seg.slice());
+    }
+
+    // 3) Para cada componente no adjunto, lo conectamos al circuito mediante el extremo más cercano actual
+    let tour = main.slice();
+    let tourEnds = () => [tour[0], tour[tour.length - 1]];
+
+    while (unattached.length) {
+      // elegir la pieza (en forward o reverse) que minimiza la distancia desde cualquiera de los extremos del tour
+      let bestIdx = -1, bestRev = false, bestToEnd = true, bestD = Infinity;
+      const [tStart, tEnd] = tourEnds();
+
+      for (let i = 0; i < unattached.length; i++) {
+        const seg = unattached[i];
+        const s = seg[0], e = seg[seg.length - 1];
+        const d1 = tEnd.distanceTo(s); // conectar al final → forward
+        const d2 = tEnd.distanceTo(e); // conectar al final → reverse
+        const d3 = tStart.distanceTo(e); // conectar al inicio → forward (prepend)
+        const d4 = tStart.distanceTo(s); // conectar al inicio → reverse (prepend)
+
+        if (d1 < bestD) { bestD = d1; bestIdx = i; bestRev = false; bestToEnd = true; }
+        if (d2 < bestD) { bestD = d2; bestIdx = i; bestRev = true;  bestToEnd = true; }
+        if (d3 < bestD) { bestD = d3; bestIdx = i; bestRev = false; bestToEnd = false; }
+        if (d4 < bestD) { bestD = d4; bestIdx = i; bestRev = true;  bestToEnd = false; }
       }
 
-      if (bestD > thresholdMeters) break;
-      const chosen = pieces.splice(bestIdx, 1)[0];
+      const chosen = unattached.splice(bestIdx, 1)[0];
       const seq = bestRev ? chosen.slice().reverse() : chosen;
-      if (almostEqual(path[path.length - 1], seq[0])) path.pop();
-      path.push(...seq);
+
+      if (bestToEnd) {
+        // añadimos CON CONECTOR RECTO si la distancia es > thr
+        const last = tour[tour.length - 1];
+        if (last.distanceTo(seq[0]) > 0) tour.push(seq[0]); // pequeño conector recto
+        // evitar duplicar nodo en unión
+        if (tour[tour.length - 1].equals(seq[0])) seq.shift();
+        tour.push(...seq);
+      } else {
+        const first = tour[0];
+        if (first.distanceTo(seq[seq.length - 1]) > 0) tour.unshift(seq[seq.length - 1]);
+        if (seq[seq.length - 1].equals(tour[0])) seq.pop();
+        tour.unshift(...seq);
+      }
     }
-    return path;
+
+    // 4) Limpieza y remuestreo final
+    const cleaned = this._dedupeConsecutive(tour);
+    const dense = this._resamplePath(cleaned, resampleEvery);
+    return dense;
   },
 
-  _extractLatLngsFromGeoJSON(geojson) {
-    const latlngs = [];
-    if (!geojson || !Array.isArray(geojson.features)) return latlngs;
+  _extractPieces(geojson) {
+    const out = [];
+    if (!geojson?.features) return out;
     for (const f of geojson.features) {
-      const g = f && f.geometry;
+      const g = f.geometry;
       if (!g) continue;
-      if (g.type === 'LineString' && Array.isArray(g.coordinates)) {
-        for (const [lng, lat] of g.coordinates) latlngs.push([lat, lng]);
-      } else if (g.type === 'MultiLineString' && Array.isArray(g.coordinates)) {
+      if (g.type === 'LineString') {
+        const arr = g.coordinates.map(([lng, lat]) => L.latLng(lat, lng));
+        if (arr.length >= 2) out.push(arr);
+      } else if (g.type === 'MultiLineString') {
         for (const line of g.coordinates) {
-          for (const [lng, lat] of line) latlngs.push([lat, lng]);
+          const arr = line.map(([lng, lat]) => L.latLng(lat, lng));
+          if (arr.length >= 2) out.push(arr);
         }
       }
     }
-    return latlngs;
+    return out;
+  },
+
+  _connectPieces(pieces, thresholdMeters) {
+    // copia mutable
+    const remaining = pieces.map(p => p.slice());
+    remaining.sort((a, b) => b.length - a.length);
+    const path = remaining.shift();
+
+    const endPts = (arr) => ({ start: arr[0], end: arr[arr.length - 1] });
+
+    while (remaining.length) {
+      const pEnd = endPts(path);
+      let best = -1, bestReverse = false, bestAtEnd = true, bestD = Infinity;
+
+      for (let i = 0; i < remaining.length; i++) {
+        const seg = remaining[i];
+        const s = seg[0], e = seg[seg.length - 1];
+        const d1 = pEnd.end.distanceTo(s);
+        const d2 = pEnd.end.distanceTo(e);
+        const d3 = pEnd.start.distanceTo(e);
+        const d4 = pEnd.start.distanceTo(s);
+
+        if (d1 < bestD) { bestD = d1; best = i; bestReverse = false; bestAtEnd = true; }
+        if (d2 < bestD) { bestD = d2; best = i; bestReverse = true;  bestAtEnd = true; }
+        if (d3 < bestD) { bestD = d3; best = i; bestReverse = false; bestAtEnd = false; }
+        if (d4 < bestD) { bestD = d4; best = i; bestReverse = true;  bestAtEnd = false; }
+      }
+
+      if (bestD > thresholdMeters) break;
+
+      const chosen = remaining.splice(best, 1)[0];
+      const seq = bestReverse ? chosen.slice().reverse() : chosen;
+
+      if (bestAtEnd) {
+        if (path[path.length - 1].equals(seq[0])) seq.shift();
+        path.push(...seq);
+      } else {
+        if (seq[seq.length - 1].equals(path[0])) seq.pop();
+        path.unshift(...seq);
+      }
+    }
+
+    return path;
+  },
+
+  _dedupeConsecutive(latlngs) {
+    const out = [];
+    for (let i = 0; i < latlngs.length; i++) {
+      const cur = latlngs[i];
+      if (i === 0 || !cur.equals(latlngs[i - 1])) out.push(cur);
+    }
+    return out;
+  },
+
+  _resamplePath(latlngs, targetMeters = 8) {
+    if (latlngs.length < 2) return latlngs.slice();
+    const out = [latlngs[0]];
+    let carry = 0;
+
+    for (let i = 0; i < latlngs.length - 1; i++) {
+      const a = latlngs[i];
+      const b = latlngs[i + 1];
+      let d = a.distanceTo(b);
+      if (d === 0) continue;
+
+      for (let dist = targetMeters - carry; dist < d; dist += targetMeters) {
+        const t = dist / d;
+        out.push(L.latLng(
+          a.lat + (b.lat - a.lat) * t,
+          a.lng + (b.lng - a.lng) * t
+        ));
+      }
+      carry = (targetMeters - ((d - carry) % targetMeters)) % targetMeters;
+      out.push(b);
+    }
+
+    return this._dedupeConsecutive(out);
   },
 
   _firstPolylineFromLayer(layer) {
@@ -1065,12 +1132,9 @@ const App = {
     const iB = this._nearestIndexInPath(entry.routeLatLngs, end.latlng);
     if (iA === iB) return;
 
-    let segmentLatLngs;
-    if (iA < iB) {
-      segmentLatLngs = entry.routeLatLngs.slice(iA, iB + 1);
-    } else {
-      segmentLatLngs = entry.routeLatLngs.slice(iB, iA + 1);
-    }
+    const segmentLatLngs = (iA < iB)
+      ? entry.routeLatLngs.slice(iA, iB + 1)
+      : entry.routeLatLngs.slice(iB, iA + 1);
 
     if (entry.selection.segmentLayer) {
       entry.selection.segmentLayer.setLatLngs(segmentLatLngs);
@@ -1086,7 +1150,7 @@ const App = {
     }
     this.bus.stop();
     this.activeRoute = L.polyline(segmentLatLngs, { opacity: 0, weight: 0 }).addTo(this.map);
-    this.bus.start(this.activeRoute, { speed: 250, loop: true, fitBounds: true });
+    this.bus.start(this.activeRoute, { speed: 5000, loop: true, fitBounds: true });
   },
 
   _handleStopClick(rutaId, marker) {
@@ -1108,7 +1172,6 @@ const App = {
       marker.bindPopup("<b>Destino</b>").openPopup();
       this._updateSegment(rutaId);
     } else {
-      // Reiniciar y establecer este clic como nuevo inicio
       this._resetSelection(rutaId);
       const againEntry = this.activeLayers[rutaId];
       againEntry.selection.start = { marker, latlng };
@@ -1117,10 +1180,11 @@ const App = {
     }
   },
 
-  // ---------- Animación de bus ----------
+  // ---------- Animación de bus (robusta) ----------
   bus: {
     marker: null,
     animFrame: null,
+
     stop() {
       if (this.animFrame) {
         cancelAnimationFrame(this.animFrame);
@@ -1131,11 +1195,12 @@ const App = {
         this.marker = null;
       }
     },
+
     /**
      * Inicia la animación
      * @param {L.Polyline} polyline
      * @param {Object} opts
-     * @param {number} [opts.speed=8] metros/segundo aproximado
+     * @param {number} [opts.speed=8] metros/seg
      * @param {boolean} [opts.loop=true]
      * @param {boolean} [opts.fitBounds=false]
      */
@@ -1143,52 +1208,66 @@ const App = {
       const { speed = 8, loop = true, fitBounds = false } = opts;
       this.stop();
 
-      const latlngs = polyline.getLatLngs().flat();
+      const latlngsRaw = polyline.getLatLngs();
+      const latlngs = Array.isArray(latlngsRaw[0]) ? latlngsRaw.flat() : latlngsRaw;
       if (!latlngs || latlngs.length < 2) return;
 
       if (fitBounds) {
         const b = L.latLngBounds(latlngs);
-        polyline._map.fitBounds(b, { padding: [30, 30] });
+        if (b.isValid()) polyline._map.fitBounds(b, { padding: [30, 30] });
       }
 
+      // Precompute segmentos (sin d=0)
       const segments = [];
-      let totalDist = 0;
+      let total = 0;
       for (let i = 0; i < latlngs.length - 1; i++) {
         const a = latlngs[i], b = latlngs[i + 1];
         const d = a.distanceTo(b);
-        segments.push({ a, b, d, acc: totalDist });
-        totalDist += d;
+        if (d <= 0) continue;
+        segments.push({ a, b, d, acc: total });
+        total += d;
       }
-      if (totalDist === 0) return;
+      if (segments.length === 0 || total === 0) return;
 
-      this.marker = L.marker(latlngs[0], { icon: App.icons.bus, zIndexOffset: 1000 }).addTo(polyline._map);
+      this.marker = L.marker(segments[0].a, { icon: App.icons.bus, zIndexOffset: 1000 }).addTo(polyline._map);
 
-      const tTotal = (totalDist / speed) * 1000;
+      const tTotal = (total / speed) * 1000;
       let t0 = null;
 
       const step = (ts) => {
         if (!t0) t0 = ts;
         let elapsed = ts - t0;
-        let dist = (elapsed / tTotal) * totalDist;
+        let dist = (elapsed / tTotal) * total;
 
-        if (dist >= totalDist) {
+        if (dist >= total) {
           if (loop) {
             t0 = ts;
             dist = 0;
           } else {
-            this.marker.setLatLng(latlngs[latlngs.length - 1]);
+            this.marker.setLatLng(segments[segments.length - 1].b);
             this.animFrame = null;
             return;
           }
         }
 
-        let seg = segments[0];
-        for (let i = 0; i < segments.length; i++) {
-          const s = segments[i];
-          if (dist <= s.acc + s.d) { seg = s; break; }
+        // búsqueda binaria
+        let lo = 0, hi = segments.length - 1, idx = 0;
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1;
+          const s = segments[mid];
+          if (dist < s.acc) {
+            hi = mid - 1;
+          } else if (dist > s.acc + s.d) {
+            lo = mid + 1;
+          } else {
+            idx = mid;
+            break;
+          }
         }
+        idx = Math.min(idx, segments.length - 1);
+        const seg = segments[idx];
 
-        const segDist = dist - seg.acc;
+        const segDist = Math.max(0, Math.min(seg.d, dist - seg.acc));
         const t = seg.d > 0 ? (segDist / seg.d) : 0;
         const lat = seg.a.lat + (seg.b.lat - seg.a.lat) * t;
         const lng = seg.a.lng + (seg.b.lng - seg.a.lng) * t;
@@ -1201,151 +1280,138 @@ const App = {
     }
   },
 
-    //Funcion de trafico
-    traffic: {
-    layer: null,           // L.LayerGroup
-    alerts: [],            // array del JSON
-    listContainer: null    // <ul> en sidebar para listar
+  // === TRAFICO ===
+  traffic: {
+    layer: null,
+    alerts: [],
+    listContainer: null
   },
 
-  // === ALERTAS DE TRÁFICO ===
-async fetchTrafficAlerts() {
-  try {
-    const res = await fetch('./data/traffic/alerts.json', { cache: 'no-store' });
-    const all = await res.json();
-    const now = Date.now();
-    this.traffic.alerts = all.filter(a => {
-      const exp = a.expira ? Date.parse(a.expira) : now + 3600000;
-      return (a.estado === 'aprobada') && (exp > now);
-    });
-  } catch (e) {
-    console.error('Error cargando alerts.json', e);
-    this.traffic.alerts = [];
-  }
-},
-
-renderTraffic() {
-  if (!this.traffic.layer) return;
-  this.traffic.layer.clearLayers();
-
-  this.traffic.alerts.forEach(a => {
-    const sev = Number(a.severidad) || 1;
-    const color = sev >= 5 ? '#dc2626' : sev >= 3 ? '#f59e0b' : '#22c55e';
-
-    // Punto
-    if (a.coord) {
-      const m = L.circleMarker([a.coord.lat, a.coord.lng], {
-        radius: 8,
-        weight: 2,
-        color: '#111',
-        fillColor: color,
-        fillOpacity: 0.85
-      }).bindPopup(`
-        <strong>${(a.tipo || 'Incidente').toUpperCase()}</strong>
-        <div>${a.descripcion || ''}</div>
-        <div>Severidad: ${sev}${a.rutaId ? ` · Ruta ${a.rutaId}` : ''}</div>
-      `);
-      m.addTo(this.traffic.layer);
-
-      if (a.radio && a.radio > 0) {
-        L.circle([a.coord.lat, a.coord.lng], {
-          radius: a.radio,
-          color,
-          weight: 2,
-          dashArray: '4 4',
-          fillOpacity: 0.08
-        }).addTo(this.traffic.layer);
-      }
+  async fetchTrafficAlerts() {
+    try {
+      const res = await fetch('./data/traffic/alerts.json', { cache: 'no-store' });
+      const all = await res.json();
+      const now = Date.now();
+      this.traffic.alerts = all.filter(a => {
+        const exp = a.expira ? Date.parse(a.expira) : now + 3600000;
+        return (a.estado === 'aprobada') && (exp > now);
+      });
+    } catch (e) {
+      console.error('Error cargando alerts.json', e);
+      this.traffic.alerts = [];
     }
+  },
 
-    // Tramo opcional
-    if (a.rutaId && a.segment && a.segment.fromStop && a.segment.toStop) {
-      this._renderTrafficSegment(a).catch(err =>
-        console.warn('No se pudo pintar segmento', a.id, err)
-      );
-    }
-  });
-},
+  renderTraffic() {
+    if (!this.traffic.layer) return;
+    this.traffic.layer.clearLayers();
 
-renderTrafficList() {
-  const ul = this.traffic.listContainer;
-  if (!ul) return;
-  ul.innerHTML = '';
+    this.traffic.alerts.forEach(a => {
+      const sev = Number(a.severidad) || 1;
+      const color = sev >= 5 ? '#dc2626' : sev >= 3 ? '#f59e0b' : '#22c55e';
 
-  const pos = this.user?.coords || null;
-
-  const items = this.traffic.alerts
-    .map(a => {
-      let distKm = null;
-      if (pos && a.coord) {
-        const p1 = L.latLng(pos.lat, pos.lng);
-        const p2 = L.latLng(a.coord.lat, a.coord.lng);
-        distKm = p1.distanceTo(p2) / 1000;
-      }
-      return { a, distKm };
-    })
-    .sort((x, y) => {
-      if (x.distKm == null && y.distKm == null) return 0;
-      if (x.distKm == null) return 1;
-      if (y.distKm == null) return -1;
-      return x.distKm - y.distKm;
-    });
-
-  items.forEach(({ a, distKm }) => {
-    const li = document.createElement('li');
-    li.className = 'list-group-item d-flex justify-content-between align-items-start';
-
-    const sev = Number(a.severidad) || 1;
-    const chip = `<span class="badge rounded-pill ${sev>=5?'bg-danger':sev>=3?'bg-warning text-dark':'bg-success'}">S${sev}</span>`;
-    const ruta = a.rutaId ? `<span class="badge bg-dark ms-1">Ruta ${a.rutaId}</span>` : '';
-    const distTxt = distKm != null ? `${distKm.toFixed(2)} km` : '';
-
-    li.innerHTML = `
-      <div class="me-auto">
-        <div class="fw-semibold text-uppercase">${a.tipo || 'Incidente'} ${chip} ${ruta}</div>
-        <small>${a.descripcion || ''}</small>
-      </div>
-      <button class="btn btn-sm btn-outline-secondary">Centrar</button>
-      <div class="ms-2 text-nowrap"><small>${distTxt}</small></div>
-    `;
-
-    li.querySelector('button').addEventListener('click', () => {
       if (a.coord) {
-        this.map.setView([a.coord.lat, a.coord.lng], Math.max(this.map.getZoom(), 15));
+        const m = L.circleMarker([a.coord.lat, a.coord.lng], {
+          radius: 8,
+          weight: 2,
+          color: '#111',
+          fillColor: color,
+          fillOpacity: 0.85
+        }).bindPopup(`
+          <strong>${(a.tipo || 'Incidente').toUpperCase()}</strong>
+          <div>${a.descripcion || ''}</div>
+          <div>Severidad: ${sev}${a.rutaId ? ` · Ruta ${a.rutaId}` : ''}</div>
+        `);
+        m.addTo(this.traffic.layer);
+
+        if (a.radio && a.radio > 0) {
+          L.circle([a.coord.lat, a.coord.lng], {
+            radius: a.radio,
+            color,
+            weight: 2,
+            dashArray: '4 4',
+            fillOpacity: 0.08
+          }).addTo(this.traffic.layer);
+        }
+      }
+
+      if (a.rutaId && a.segment && a.segment.fromStop && a.segment.toStop) {
+        this._renderTrafficSegment(a).catch(err =>
+          console.warn('No se pudo pintar segmento', a.id, err)
+        );
       }
     });
+  },
 
-    ul.appendChild(li);
-  });
+  renderTrafficList() {
+    const ul = this.traffic.listContainer;
+    if (!ul) return;
+    ul.innerHTML = '';
 
-  if (!items.length) {
-    const li = document.createElement('li');
-    li.className = 'list-group-item';
-    li.textContent = 'Sin alertas vigentes.';
-    ul.appendChild(li);
-  }
-},
+    const pos = this.user?.coords || null;
 
-  // Opcional: pintar tramo afectado si tienes stops/latlngs por ruta
-  async _renderTrafficSegment(alerta) {
-    let latlngs = this.routeLatLngs?.[alerta.rutaId];
-    if (!latlngs) {
-      const geo = await this.fetchGeoJSON(`./data/${alerta.rutaId}/route.json`);
-      latlngs = this._extractLatLngsFromGeoJSON(geo);
+    const items = this.traffic.alerts
+      .map(a => {
+        let distKm = null;
+        if (pos && a.coord) {
+          const p1 = L.latLng(pos.lat, pos.lng);
+          const p2 = L.latLng(a.coord.lat, a.coord.lng);
+          distKm = p1.distanceTo(p2) / 1000;
+        }
+        return { a, distKm };
+      })
+      .sort((x, y) => {
+        if (x.distKm == null && y.distKm == null) return 0;
+        if (x.distKm == null) return 1;
+        if (y.distKm == null) return -1;
+        return x.distKm - y.distKm;
+      });
+
+    items.forEach(({ a, distKm }) => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex justify-content-between align-items-start';
+
+      const sev = Number(a.severidad) || 1;
+      const chip = `<span class="badge rounded-pill ${sev>=5?'bg-danger':sev>=3?'bg-warning text-dark':'bg-success'}">S${sev}</span>`;
+      const ruta = a.rutaId ? `<span class="badge bg-dark ms-1">Ruta ${a.rutaId}</span>` : '';
+      const distTxt = distKm != null ? `${distKm.toFixed(2)} km` : '';
+
+      li.innerHTML = `
+        <div class="me-auto">
+          <div class="fw-semibold text-uppercase">${a.tipo || 'Incidente'} ${chip} ${ruta}</div>
+          <small>${a.descripcion || ''}</small>
+        </div>
+        <button class="btn btn-sm btn-outline-secondary">Centrar</button>
+        <div class="ms-2 text-nowrap"><small>${distTxt}</small></div>
+      `;
+
+      li.querySelector('button').addEventListener('click', () => {
+        if (a.coord) {
+          this.map.setView([a.coord.lat, a.coord.lng], Math.max(this.map.getZoom(), 15));
+        }
+      });
+
+      ul.appendChild(li);
+    });
+
+    if (!items.length) {
+      const li = document.createElement('li');
+      li.className = 'list-group-item';
+      li.textContent = 'Sin alertas vigentes.';
+      ul.appendChild(li);
     }
+  },
 
-    const stops = this.routeStops?.[alerta.rutaId];
-    if (!stops || !latlngs) return;
+  async _renderTrafficSegment(alerta) {
+    // Construir path continuo para esa ruta
+    const geo = await this.fetchGeoJSON(`./data/${alerta.rutaId}/route.json`);
+    if (!geo) return;
+    const latlngs = this._buildCoverageLoopFromGeoJSON(geo, { connectThreshold: 25, resampleEvery: 8 });
+    if (!latlngs.length) return;
 
-    const iA = stops.findIndex(s => String(s.id) === String(alerta.segment.fromStop));
-    const iB = stops.findIndex(s => String(s.id) === String(alerta.segment.toStop));
-    if (iA < 0 || iB < 0) return;
-
-    const start = Math.min(iA, iB);
-    const end   = Math.max(iA, iB);
-    const segLatLngs = latlngs.slice(start, end + 1);
-
-    L.polyline(segLatLngs, { color: '#e11d48', weight: 6, opacity: 0.9 })
+    // Si tienes stops indexados, aquí podrías mapear por IDs de parada → indices
+    // Por ahora pintamos todo el recorrido como referencia simple:
+    L.polyline(latlngs, { color: '#e11d48', weight: 6, opacity: 0.6, dashArray: '6 6' })
       .addTo(this.traffic.layer);
   },
 
