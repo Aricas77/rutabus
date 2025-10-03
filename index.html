@@ -21,8 +21,8 @@
           <!-- Sección izquierda - Buscador de rutas -->
           <div class="navbar-section left">
               <form class="d-none d-md-flex" role="search">
-                  <input id="buscadorRutas" class="form-control form-control-sm navbar-search-input" 
-                         type="search" placeholder="Buscar ruta (número o nombre)..." aria-label="Buscar rutas" />
+                  <input id="buscadorRutas" class="form-control form-control-sm navbar-search-input requires-auth"
+       type="search" placeholder="Buscar ruta (requiere iniciar sesión)" aria-label="Buscar rutas" disabled />
               </form>
           </div>
 
@@ -71,10 +71,14 @@
         <aside class="sidebar">
             <h4>Rutas disponibles</h4>
             <div class="mb-2">
-                <button id="toggleRoutesBtn" class="btn btn-primary w-100">
-                    Cargando rutas...
+                <button id="toggleRoutesBtn" class="btn btn-primary w-100 requires-auth" disabled>
+                Cargando rutas...
                 </button>
             </div>
+            <div id="guest-legend" class="guest-legend" style="display:none;">
+            ¡Inicia sesión para tener acceso a muchas funcionalidades más!
+            </div>
+
             <!-- Lista de rutas disponibles -->
             <ul id="rutasLista" class="list-group"></ul>
             <!-- Mensaje cuando no hay resultados en la búsqueda -->
@@ -85,13 +89,17 @@
 
             <!-- Alerta de trafico -->
             <div class="mt-3">
-                <button id="toggleTrafficBtn" class="btn btn-warning w-100">Ver Alertas de Tráfico</button>
+                <button id="toggleTrafficBtn" class="btn btn-warning w-100 requires-auth" disabled>
+                Ver Alertas de Tráfico
+                </button>
                 <ul id="trafficList" class="list-group mt-2"></ul>
             </div>
 
             <!-- Reportar tráfico -->
             <div class="mt-2">
-                <button id="reportTrafficBtn" class="btn btn-danger w-100">Reportar tráfico</button>
+                <button id="reportTrafficBtn" class="btn btn-danger w-100 requires-auth" disabled>
+                Reportar tráfico
+                </button>
             </div>
 
             
@@ -102,7 +110,8 @@
     </div>
 
     <!-- Botón flotante para seguimiento de ubicación -->
-    <button id="locationBtn" class="location-btn" title="Seguir mi ubicación en tiempo real" aria-pressed="false">
+    <button id="locationBtn" class="location-btn requires-auth" title="Seguir mi ubicación en tiempo real"
+        aria-pressed="false" disabled>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#333"><path d="M12 8.5A3.5 3.5 0 1 0 12 15.5 3.5 3.5 0 0 0 12 8.5ZM12 13.5A1.5 1.5 0 1 1 12 10.5 1.5 1.5 0 0 1 12 13.5ZM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8Z"/></svg>
     </button>
 

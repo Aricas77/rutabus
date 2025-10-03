@@ -353,7 +353,9 @@ const App = {
     userDisplayName: document.getElementById('user-display-name'),
     menuIcon: document.getElementById('menu-icon'),
     adminMenu: document.getElementById('admin-menu'),
-    addRouteBtn: document.getElementById('add-route-btn')
+    addRouteBtn: document.getElementById('add-route-btn'),
+    guestLegend: document.getElementById('guest-legend'),
+    reportTrafficBtn: document.getElementById('reportTrafficBtn')
   },
 
   icons: {
@@ -411,16 +413,21 @@ const App = {
       }
     });
 
-    // [TRAFFIC INIT]
+    // TRAFFIC
     this.traffic.layer = L.layerGroup().addTo(this.map);
     this.traffic.listContainer = document.getElementById('trafficList');
+
+    // Bloqueamos su handler si es invitado (se refuerza en setupEventListeners)
     this.$toggleTrafficBtn = document.getElementById('toggleTrafficBtn');
     this.$toggleTrafficBtn?.addEventListener('click', async () => {
+      if (!this.isAuthenticated()) return this._nudgeGuest('Ver alertas de tráfico');
       await this.fetchTrafficAlerts();
       this.renderTraffic();
       this.renderTrafficList();
     });
   },
+
+  
 
   // --- Lógica de Carga de Datos y Ubicación ---
   async fetchAllRouteData() {
@@ -433,6 +440,8 @@ const App = {
   },
 
   getUserLocation() {
+    if (!this.isAuthenticated()) { this._nudgeGuest('Mi ubicación'); return Promise.reject(); }
+
     const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
@@ -462,6 +471,7 @@ const App = {
   },
 
   async toggleUserLocation() {
+    if (!this.isAuthenticated()) return this._nudgeGuest('Mi ubicación');
     this.isLocationActive = !this.isLocationActive;
     this.elements.locationBtn.classList.toggle('active', this.isLocationActive);
     this.elements.locationBtn.setAttribute('aria-pressed', this.isLocationActive ? 'true' : 'false');
@@ -766,14 +776,19 @@ const App = {
 
     if (geoStops) {
       const stopLayer = L.geoJSON(geoStops, {
-        pointToLayer: (feature, latlng) => {
-          const m = L.marker(latlng, { icon: this.icons.parada });
-          const name = feature?.properties?.name || "Sin nombre";
+      pointToLayer: (feature, latlng) => {
+        const m = L.marker(latlng, { icon: this.icons.parada });
+        const name = feature?.properties?.name || "Sin nombre";
+        if (this.isAuthenticated()) {
           m.bindPopup(`<b>Parada:</b> ${name}<br><small>Click: inicio/destino</small>`);
           m.on('click', () => this._handleStopClick(rutaId, m));
-          return m;
+        } else {
+          m.bindPopup(`<b>Parada:</b> ${name}<br><small>Inicia sesión para marcar inicio/destino</small>`);
+          m.on('click', () => this._nudgeGuest('Seleccionar inicio/destino'));
         }
-      }).addTo(this.map);
+        return m;
+      }
+    }).addTo(this.map);
       this.activeLayers[rutaId].stopLayer = stopLayer;
       this.activeLayers[rutaId].selection = { start: null, end: null, segmentLayer: null };
     }
@@ -808,9 +823,26 @@ const App = {
 
   updateAuthUI() {
     const userString = localStorage.getItem('rutabus_user');
-    if (userString) {
+    const authed = !!userString;
+
+    // Botones/inputs restringidos:
+    const restricteds = [
+      this.elements.buscador,
+      this.elements.toggleRoutesBtn,
+      this.elements.locationBtn,
+      this.elements.reportTrafficBtn,
+      document.getElementById('toggleTrafficBtn')
+    ].filter(Boolean);
+
+    if (authed) {
+      // UI de usuario
       this.elements.guestButtons.style.display = 'none';
       this.elements.userButtons.style.display = 'flex';
+      this.elements.guestLegend.style.display = 'none';
+
+      // Habilitar controles
+      restricteds.forEach(el => { el.disabled = false; el.classList.remove('requires-auth'); });
+
       const userData = JSON.parse(userString);
       if (userData.rol === 'administrador') {
         this.elements.userDisplayName.textContent = 'Administrador';
@@ -818,11 +850,27 @@ const App = {
       } else {
         const firstName = userData.nombre.split(' ')[0];
         this.elements.userDisplayName.textContent = firstName;
+        this.elements.menuIcon.style.display = 'none';
       }
     } else {
+      // UI de invitado
       this.elements.guestButtons.style.display = 'flex';
       this.elements.userButtons.style.display = 'none';
       this.elements.userDisplayName.textContent = 'Invitado';
+      this.elements.menuIcon.style.display = 'none';
+
+      // Deshabilitar controles
+      restricteds.forEach(el => {
+        el.disabled = true;
+        if (!el.classList.contains('requires-auth')) el.classList.add('requires-auth');
+      });
+      // Ajusta placeholder del buscador
+      if (this.elements.buscador) {
+        this.elements.buscador.value = '';
+        this.elements.buscador.placeholder = 'Buscar ruta (requiere iniciar sesión)';
+      }
+      // Mostrar banner
+      this.elements.guestLegend.style.display = 'block';
     }
   },
 
@@ -834,20 +882,33 @@ const App = {
   // --- Event Listeners ---
   setupEventListeners() {
     this.elements.rutasLista.addEventListener("click", (e) => {
-      const btn = e.target.closest(".ruta-btn");
+    const btn = e.target.closest(".ruta-btn");
       if (btn) this.toggleRuta(btn);
     });
 
-    this.elements.buscador.addEventListener('input', () => this.renderRouteList());
+    // Buscador (restringido)
+    this.elements.buscador.addEventListener('focus', () => {
+      if (!this.isAuthenticated()) {
+        this._nudgeGuest('Buscar rutas');
+        this.elements.buscador.blur();
+      }
+    });
+    this.elements.buscador.addEventListener('input', () => {
+      if (!this.isAuthenticated()) return;
+      this.renderRouteList();
+    });
     this.elements.buscador.addEventListener('keydown', (e) => {
+      if (!this.isAuthenticated()) return e.preventDefault();
       if (e.key === 'Escape') {
         e.target.value = '';
         this.renderRouteList();
       }
     });
 
+    // Logout
     this.elements.logoutBtn.addEventListener('click', () => this.logout());
 
+    // Sidebar toggle (siempre permitido)
     this.elements.toggleSidebarBtn.addEventListener('click', () => {
       this.elements.sidebar.classList.toggle('collapsed');
       const isCollapsed = this.elements.sidebar.classList.contains('collapsed');
@@ -855,21 +916,27 @@ const App = {
       this.elements.toggleSidebarBtn.classList.toggle('collapsed', isCollapsed);
     });
 
+    // Rutas cercanas vs todas (restringido)
     this.elements.toggleRoutesBtn.addEventListener('click', () => {
+      if (!this.isAuthenticated()) return this._nudgeGuest('Rutas cercanas');
       this.isShowingAll = !this.isShowingAll;
       Object.keys(this.activeLayers).forEach(rid => this._resetSelection(rid));
       this.updateToggleButtonText();
       this.renderRouteList();
     });
 
-    this.elements.locationBtn.addEventListener('click', () => this.toggleUserLocation());
+    // Ubicación (restringido)
+    this.elements.locationBtn.addEventListener('click', () => {
+      if (!this.isAuthenticated()) return this._nudgeGuest('Mi ubicación');
+      this.toggleUserLocation();
+    });
 
+    // Menú admin (solo UI, ya lo restringe updateAuthUI)
     this.elements.menuIcon.addEventListener('click', (e) => {
       e.stopPropagation();
       const menu = this.elements.adminMenu;
       menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
     });
-
     window.addEventListener('click', () => {
       if (this.elements.adminMenu.style.display === 'block') {
         this.elements.adminMenu.style.display = 'none';
@@ -879,6 +946,12 @@ const App = {
     this.elements.addRouteBtn?.addEventListener('click', (e) => {
       e.preventDefault();
       window.location.href = '/admin.html';
+    });
+
+    // Reportar tráfico (restringido)
+    this.elements.reportTrafficBtn?.addEventListener('click', () => {
+      if (!this.isAuthenticated()) return this._nudgeGuest('Reportar tráfico');
+      alert('Aquí abrirías tu modal/form para reportar tráfico (solo usuarios).');
     });
   },
 
@@ -900,6 +973,20 @@ const App = {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
+  },
+
+  isAuthenticated() {
+    try {
+      const u = JSON.parse(localStorage.getItem('rutabus_user') || 'null');
+      return !!u;
+    } catch { return false; }
+  },
+
+  isAdmin() {
+    try {
+      const u = JSON.parse(localStorage.getItem('rutabus_user') || 'null');
+      return u?.rol === 'administrador';
+    } catch { return false; }
   },
 
   // --- Geometría robusta ---
@@ -1154,6 +1241,7 @@ const App = {
   },
 
   _handleStopClick(rutaId, marker) {
+    if (!this.isAuthenticated()) return this._nudgeGuest('Seleccionar inicio/destino');
     const entry = this.activeLayers[rutaId];
     if (!entry) return;
 
@@ -1348,7 +1436,7 @@ const App = {
     if (!ul) return;
     ul.innerHTML = '';
 
-    const pos = this.user?.coords || null;
+    const pos = this.userLocation || null;
 
     const items = this.traffic.alerts
       .map(a => {
@@ -1414,6 +1502,18 @@ const App = {
     L.polyline(latlngs, { color: '#e11d48', weight: 6, opacity: 0.6, dashArray: '6 6' })
       .addTo(this.traffic.layer);
   },
+
+  _nudgeGuest(featureName = '') {
+    if (this.elements.guestLegend) {
+      this.elements.guestLegend.classList.remove('pulse'); // reinicia anim
+      void this.elements.guestLegend.offsetWidth;
+      this.elements.guestLegend.classList.add('pulse');
+    }
+    if (featureName) {
+      alert(`Inicia sesión para usar: ${featureName}.`);
+    }
+  },
+
 
 };
 
