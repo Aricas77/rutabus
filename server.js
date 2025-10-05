@@ -6,6 +6,8 @@
 // 1. Importación de dependencias necesarias
 const express = require('express');
 const { MongoClient } = require('mongodb');
+const fs = require('fs').promises;
+const path = require('path');
 
 // 2. Configuración inicial del servidor
 const app = express();
@@ -155,6 +157,213 @@ async function startServer() {
         process.exit(1);
     }
 }
+
+/**
+ * Endpoint para obtener todas las rutas desde la base de datos
+ * GET /api/routes
+ */
+app.get('/api/routes', async (req, res) => {
+    if (!db) {
+        return res.status(500).json({ 
+            success: false, 
+            message: "Error interno: No hay conexión a la base de datos." 
+        });
+    }
+
+    try {
+        const routes = await db.collection('routes').find({}).toArray();
+        res.json({ success: true, routes });
+    } catch (error) {
+        console.error("Error obteniendo rutas:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Error obteniendo rutas de la base de datos." 
+        });
+    }
+});
+
+/**
+ * Endpoint para obtener una ruta específica por ID
+ * GET /api/routes/:id
+ */
+app.get('/api/routes/:id', async (req, res) => {
+    if (!db) {
+        return res.status(500).json({ 
+            success: false, 
+            message: "Error interno: No hay conexión a la base de datos." 
+        });
+    }
+
+    try {
+        const { id } = req.params;
+        const route = await db.collection('routes').findOne({ id: id });
+        
+        if (!route) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Ruta no encontrada." 
+            });
+        }
+
+        res.json({ success: true, route });
+    } catch (error) {
+        console.error("Error obteniendo ruta:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Error obteniendo la ruta de la base de datos." 
+        });
+    }
+});
+
+/**
+ * Endpoint para crear una nueva ruta
+ * POST /api/routes
+ */
+app.post('/api/routes', async (req, res) => {
+    if (!db) {
+        return res.status(500).json({ 
+            success: false, 
+            message: "Error interno: No hay conexión a la base de datos." 
+        });
+    }
+
+    try {
+        const { 
+            id, 
+            stop, 
+            name, 
+            routeData, 
+            stopsData, 
+            routeInfo 
+        } = req.body;
+
+        // Validar datos requeridos
+        if (!id || !stop || !name || !routeData) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Faltan datos requeridos: id, stop, name, routeData." 
+            });
+        }
+
+        // Verificar si ya existe una ruta con este ID
+        const existingRoute = await db.collection('routes').findOne({ id: id });
+        if (existingRoute) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `Ya existe una ruta con el ID ${id}.` 
+            });
+        }
+
+        // Crear objeto de ruta
+        const newRoute = {
+            id,
+            stop,
+            name,
+            routeData, // GeoJSON de la ruta
+            stopsData: stopsData || null, // GeoJSON de las paradas
+            routeInfo: routeInfo || {}, // Información adicional (horarios, etc.)
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
+
+        await db.collection('routes').insertOne(newRoute);
+        res.status(201).json({ 
+            success: true, 
+            message: "Ruta creada exitosamente.",
+            routeId: id
+        });
+
+    } catch (error) {
+        console.error("Error creando ruta:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Error creando la ruta en la base de datos." 
+        });
+    }
+});
+
+/**
+ * Endpoint para actualizar una ruta existente
+ * PUT /api/routes/:id
+ */
+app.put('/api/routes/:id', async (req, res) => {
+    if (!db) {
+        return res.status(500).json({ 
+            success: false, 
+            message: "Error interno: No hay conexión a la base de datos." 
+        });
+    }
+
+    try {
+        const { id } = req.params;
+        const updateData = req.body;
+        
+        // Agregar timestamp de actualización
+        updateData.updatedAt = new Date();
+
+        const result = await db.collection('routes').updateOne(
+            { id: id },
+            { $set: updateData }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Ruta no encontrada." 
+            });
+        }
+
+        res.json({ 
+            success: true, 
+            message: "Ruta actualizada exitosamente." 
+        });
+
+    } catch (error) {
+        console.error("Error actualizando ruta:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Error actualizando la ruta en la base de datos." 
+        });
+    }
+});
+
+/**
+ * Endpoint para eliminar una ruta
+ * DELETE /api/routes/:id
+ */
+app.delete('/api/routes/:id', async (req, res) => {
+    if (!db) {
+        return res.status(500).json({ 
+            success: false, 
+            message: "Error interno: No hay conexión a la base de datos." 
+        });
+    }
+
+    try {
+        const { id } = req.params;
+
+        const result = await db.collection('routes').deleteOne({ id: id });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Ruta no encontrada." 
+            });
+        }
+
+        res.json({ 
+            success: true, 
+            message: "Ruta eliminada exitosamente." 
+        });
+
+    } catch (error) {
+        console.error("Error eliminando ruta:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Error eliminando la ruta de la base de datos." 
+        });
+    }
+});
 
 // Iniciar el servidor
 startServer();

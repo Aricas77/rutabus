@@ -381,8 +381,8 @@ body {
 }
 
 .editor-panel {
-    width: 350px;
-    min-width: 350px;
+    width: 400px;
+    min-width: 400px;
     padding: 20px;
     background-color: #ffffff;
     border-right: 1px solid #dee2e6;
@@ -394,9 +394,10 @@ body {
 }
 
 .editor-panel form {
-    height: 100%;
     display: flex;
     flex-direction: column;
+    min-height: 0;
+    flex: 1;
 }
 
 .editor-panel h2 {
@@ -408,7 +409,7 @@ body {
 }
 
 .editor-panel .form-group {
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
 }
 
 .editor-panel .form-group label {
@@ -426,11 +427,12 @@ body {
 }
 
 .editor-panel .instructions {
-    margin: 1rem 0;
-    padding: 1rem;
+    margin: 0.5rem 0;
+    padding: 0.75rem;
     border-radius: 4px;
     background-color: #f8f9fa;
     border: 1px solid #dee2e6;
+    font-size: 0.85rem;
 }
 
 .editor-panel .instructions p {
@@ -473,6 +475,97 @@ hr {
   display: none;
   margin-top: 8px;
   padding: 10px;
+}
+
+/* Estilos para gestión de rutas existentes */
+.existing-routes {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    background-color: #f8f9fa;
+}
+
+.route-item {
+    padding: 0.5rem;
+    margin-bottom: 0.25rem;
+    background-color: white;
+    border-radius: 0.25rem;
+    border: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.route-item:hover {
+    background-color: #e3f2fd;
+    cursor: pointer;
+}
+
+.route-item.selected {
+    background-color: #bbdefb;
+    border-color: #2196f3;
+}
+
+.route-item-info {
+    flex-grow: 1;
+}
+
+.route-item-name {
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.route-item-id {
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+.route-item-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.btn-xs {
+    padding: 0.125rem 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+/* Layout mejorado del formulario */
+.form-fields-container {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 5px;
+    margin-bottom: 1rem;
+    scrollbar-width: thin;
+    scrollbar-color: #6c757d #f8f9fa;
+}
+
+.form-fields-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.form-fields-container::-webkit-scrollbar-track {
+    background: #f8f9fa;
+    border-radius: 3px;
+}
+
+.form-fields-container::-webkit-scrollbar-thumb {
+    background: #6c757d;
+    border-radius: 3px;
+}
+
+.form-fields-container::-webkit-scrollbar-thumb:hover {
+    background: #495057;
+}
+
+.form-submit-container {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    border-radius: 0 0 8px 8px;
+    margin: -20px -20px 0 -20px;
+}
   border: 1px solid #dee2e6;
   border-radius: 8px;
   background: #f1f3f5;   /* gris claro */

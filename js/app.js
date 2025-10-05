@@ -432,11 +432,52 @@ const App = {
   // --- Lógica de Carga de Datos y Ubicación ---
   async fetchAllRouteData() {
     this.elements.toggleRoutesBtn.textContent = 'Cargando datos de rutas...';
-    const promises = RUTAS.map(rutaInfo =>
-      this.fetchGeoJSON(`./data/${rutaInfo.id}/route.json`)
-        .then(geojson => ({ ...rutaInfo, geojson }))
-    );
-    this.routeData = await Promise.all(promises);
+    
+    try {
+      // Primero intentar cargar desde la base de datos
+      const response = await fetch('/api/routes');
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.routes.length > 0) {
+          // Convertir datos de base de datos al formato esperado
+          this.routeData = result.routes.map(route => ({
+            id: route.id,
+            stop: route.stop,
+            name: route.name,
+            geojson: route.routeData || null,
+            stopsData: route.stopsData || null,
+            routeInfo: route.routeInfo || {}
+          }));
+          
+          // Actualizar RUTA_INFO con datos de la base de datos
+          result.routes.forEach(route => {
+            if (route.routeInfo) {
+              RUTA_INFO[route.id] = route.routeInfo;
+            }
+          });
+          
+          console.log(`Cargadas ${this.routeData.length} rutas desde la base de datos`);
+          return;
+        }
+      }
+      
+      // Si no hay datos en la BD, usar datos estáticos como fallback
+      console.log('No hay rutas en la base de datos, usando datos estáticos');
+      const promises = RUTAS.map(rutaInfo =>
+        this.fetchGeoJSON(`./data/${rutaInfo.id}/route.json`)
+          .then(geojson => ({ ...rutaInfo, geojson }))
+      );
+      this.routeData = await Promise.all(promises);
+      
+    } catch (error) {
+      console.error('Error cargando rutas desde BD, usando datos estáticos:', error);
+      // Fallback a datos estáticos
+      const promises = RUTAS.map(rutaInfo =>
+        this.fetchGeoJSON(`./data/${rutaInfo.id}/route.json`)
+          .then(geojson => ({ ...rutaInfo, geojson }))
+      );
+      this.routeData = await Promise.all(promises);
+    }
   },
 
   getUserLocation() {
@@ -734,9 +775,17 @@ const App = {
 
     const ruta = this.routeData.find(r => r.id === rutaId);
     const geoRuta = ruta ? ruta.geojson : null;
-
-    const stopsUrl = `./data/${rutaId}/route_${stopId}_stops.geojson`;
-    const geoStops = await this.fetchGeoJSON(stopsUrl);
+    
+    // Intentar obtener paradas desde los datos de la ruta o desde archivo
+    let geoStops = null;
+    if (ruta && ruta.stopsData) {
+      // Usar paradas desde la base de datos
+      geoStops = ruta.stopsData;
+    } else {
+      // Fallback: cargar desde archivo
+      const stopsUrl = `./data/${rutaId}/route_${stopId}_stops.geojson`;
+      geoStops = await this.fetchGeoJSON(stopsUrl);
+    }
 
     if (geoRuta) {
       const routeLayer = L.geoJSON(geoRuta, { style: { color: "green", weight: 4 } }).addTo(this.map);
