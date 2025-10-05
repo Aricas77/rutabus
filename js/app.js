@@ -351,9 +351,6 @@ const App = {
     toggleRoutesBtn: document.getElementById('toggleRoutesBtn'),
     locationBtn: document.getElementById('locationBtn'),
     userDisplayName: document.getElementById('user-display-name'),
-    menuIcon: document.getElementById('menu-icon'),
-    adminMenu: document.getElementById('admin-menu'),
-    addRouteBtn: document.getElementById('add-route-btn'),
     guestLegend: document.getElementById('guest-legend'),
     reportTrafficBtn: document.getElementById('reportTrafficBtn')
   },
@@ -434,47 +431,85 @@ const App = {
     this.elements.toggleRoutesBtn.textContent = 'Cargando datos de rutas...';
     
     try {
-      // Primero intentar cargar desde la base de datos
-      const response = await fetch('/api/routes');
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.routes.length > 0) {
-          // Convertir datos de base de datos al formato esperado
-          this.routeData = result.routes.map(route => ({
-            id: route.id,
-            stop: route.stop,
-            name: route.name,
-            geojson: route.routeData || null,
-            stopsData: route.stopsData || null,
-            routeInfo: route.routeInfo || {}
-          }));
-          
-          // Actualizar RUTA_INFO con datos de la base de datos
-          result.routes.forEach(route => {
-            if (route.routeInfo) {
-              RUTA_INFO[route.id] = route.routeInfo;
-            }
-          });
-          
-          console.log(`Cargadas ${this.routeData.length} rutas desde la base de datos`);
-          return;
-        }
+      // Cargar rutas de la base de datos y rutas locales en paralelo
+      const dbPromise = fetch('/api/routes');
+      const localPromise = fetch('/api/routes/local');
+      
+      const [dbResponse, localResponse] = await Promise.all([dbPromise, localPromise]);
+      
+      const dbResult = dbResponse.ok ? await dbResponse.json() : { success: false, routes: [] };
+      const localResult = localResponse.ok ? await localResponse.json() : { success: false, routes: [] };
+      
+      // Combinar rutas de ambas fuentes
+      let allRoutes = [];
+      
+      // Agregar rutas de base de datos
+      if (dbResult.success && dbResult.routes.length > 0) {
+        const dbRoutes = dbResult.routes.map(route => ({
+          id: route.id,
+          stop: route.stop,
+          name: route.name,
+          geojson: route.routeData || null,
+          stopsData: route.stopsData || null,
+          routeInfo: route.routeInfo || {},
+          source: 'database'
+        }));
+        allRoutes = allRoutes.concat(dbRoutes);
+        
+        // Actualizar RUTA_INFO con datos de la base de datos
+        dbResult.routes.forEach(route => {
+          if (route.routeInfo) {
+            RUTA_INFO[route.id] = route.routeInfo;
+          }
+        });
       }
       
-      // Si no hay datos en la BD, usar datos estáticos como fallback
-      console.log('No hay rutas en la base de datos, usando datos estáticos');
+      // Agregar rutas locales
+      if (localResult.success && localResult.routes.length > 0) {
+        const localRoutes = localResult.routes.map(route => ({
+          id: route.id,
+          stop: route.stop,
+          name: route.name,
+          geojson: route.routeData || null,
+          stopsData: route.stopsData || null,
+          routeInfo: route.routeInfo || {},
+          source: 'local'
+        }));
+        allRoutes = allRoutes.concat(localRoutes);
+        
+        // Actualizar RUTA_INFO con datos locales
+        localResult.routes.forEach(route => {
+          if (route.routeInfo) {
+            RUTA_INFO[route.id] = route.routeInfo;
+          }
+        });
+      }
+      
+      if (allRoutes.length > 0) {
+        // Ordenar por ID para mejor organización
+        allRoutes.sort((a, b) => a.id.localeCompare(b.id));
+        this.routeData = allRoutes;
+        
+        const dbCount = dbResult.success ? dbResult.routes.length : 0;
+        const localCount = localResult.success ? localResult.routes.length : 0;
+        console.log(`Cargadas ${allRoutes.length} rutas: ${dbCount} de BD, ${localCount} locales`);
+        return;
+      }
+      
+      // Si no hay datos en ninguna fuente, usar datos estáticos como fallback
+      console.log('No hay rutas en BD ni locales, usando datos estáticos');
       const promises = RUTAS.map(rutaInfo =>
         this.fetchGeoJSON(`./data/${rutaInfo.id}/route.json`)
-          .then(geojson => ({ ...rutaInfo, geojson }))
+          .then(geojson => ({ ...rutaInfo, geojson, source: 'static' }))
       );
       this.routeData = await Promise.all(promises);
       
     } catch (error) {
-      console.error('Error cargando rutas desde BD, usando datos estáticos:', error);
+      console.error('Error cargando rutas, usando datos estáticos:', error);
       // Fallback a datos estáticos
       const promises = RUTAS.map(rutaInfo =>
         this.fetchGeoJSON(`./data/${rutaInfo.id}/route.json`)
-          .then(geojson => ({ ...rutaInfo, geojson }))
+          .then(geojson => ({ ...rutaInfo, geojson, source: 'static' }))
       );
       this.routeData = await Promise.all(promises);
     }
@@ -665,12 +700,43 @@ const App = {
       for (const ruta of routesToShow) {
         const li = document.createElement('li');
         li.className = 'list-group-item';
+        
+        // Agregar clase para distinguir fuentes
+        if (ruta.source === 'local') {
+          li.classList.add('route-local-item');
+        } else if (ruta.source === 'database') {
+          li.classList.add('route-database-item');
+        }
 
         const button = document.createElement('button');
         button.className = 'btn btn-link ruta-btn';
         button.dataset.ruta = ruta.id;
         button.dataset.stop = ruta.stop;
-        button.textContent = ruta.name;
+        
+        // Crear contenido del botón con indicador de fuente
+        const routeName = document.createElement('span');
+        routeName.textContent = ruta.name;
+        
+        const sourceIndicator = document.createElement('span');
+        sourceIndicator.className = 'badge ms-2';
+        if (ruta.source === 'local') {
+          sourceIndicator.className += ' badge-info';
+          sourceIndicator.textContent = 'Local';
+          sourceIndicator.style.backgroundColor = '#17a2b8';
+          sourceIndicator.style.color = 'white';
+          sourceIndicator.style.fontSize = '0.7rem';
+        } else if (ruta.source === 'database') {
+          sourceIndicator.className += ' badge-success';
+          sourceIndicator.textContent = 'BD';
+          sourceIndicator.style.backgroundColor = '#28a745';
+          sourceIndicator.style.color = 'white';
+          sourceIndicator.style.fontSize = '0.7rem';
+        }
+        
+        button.appendChild(routeName);
+        if (ruta.source && ruta.source !== 'static') {
+          button.appendChild(sourceIndicator);
+        }
 
         if (this.activeLayers[ruta.id]) {
           button.classList.add('active');
@@ -724,8 +790,9 @@ const App = {
   },
 
   isRouteNearby(ruta, userLoc, radiusKm) {
-    if (!ruta.geojson?.features?.[0]?.geometry?.coordinates) return false;
-    const coordinates = ruta.geojson.features[0].geometry.coordinates;
+    const routeGeoJSON = ruta.geojson || ruta.routeData;
+    if (!routeGeoJSON?.features?.[0]?.geometry?.coordinates) return false;
+    const coordinates = routeGeoJSON.features[0].geometry.coordinates;
     for (const point of coordinates) {
       const actualPoint = Array.isArray(point[0]) ? point[0] : point;
       const pointLoc = { lon: actualPoint[0], lat: actualPoint[1] };
@@ -774,7 +841,8 @@ const App = {
     this.activeLayers[rutaId] = {};
 
     const ruta = this.routeData.find(r => r.id === rutaId);
-    const geoRuta = ruta ? ruta.geojson : null;
+    // Manejar tanto el formato nuevo (routeData) como el antiguo (geojson)
+    const geoRuta = ruta ? (ruta.geojson || ruta.routeData) : null;
     
     // Intentar obtener paradas desde los datos de la ruta o desde archivo
     let geoStops = null;
@@ -893,20 +961,24 @@ const App = {
       restricteds.forEach(el => { el.disabled = false; el.classList.remove('requires-auth'); });
 
       const userData = JSON.parse(userString);
+      const adminPanelBtn = document.getElementById('admin-panel-btn');
+      
       if (userData.rol === 'administrador') {
         this.elements.userDisplayName.textContent = 'Administrador';
-        this.elements.menuIcon.style.display = 'block';
+        if (adminPanelBtn) adminPanelBtn.style.display = 'block';
       } else {
         const firstName = userData.nombre.split(' ')[0];
         this.elements.userDisplayName.textContent = firstName;
-        this.elements.menuIcon.style.display = 'none';
+        if (adminPanelBtn) adminPanelBtn.style.display = 'none';
       }
     } else {
       // UI de invitado
       this.elements.guestButtons.style.display = 'flex';
       this.elements.userButtons.style.display = 'none';
       this.elements.userDisplayName.textContent = 'Invitado';
-      this.elements.menuIcon.style.display = 'none';
+      
+      const adminPanelBtn = document.getElementById('admin-panel-btn');
+      if (adminPanelBtn) adminPanelBtn.style.display = 'none';
 
       // Deshabilitar controles
       restricteds.forEach(el => {
@@ -980,22 +1052,7 @@ const App = {
       this.toggleUserLocation();
     });
 
-    // Menú admin (solo UI, ya lo restringe updateAuthUI)
-    this.elements.menuIcon.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const menu = this.elements.adminMenu;
-      menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-    });
-    window.addEventListener('click', () => {
-      if (this.elements.adminMenu.style.display === 'block') {
-        this.elements.adminMenu.style.display = 'none';
-      }
-    });
-
-    this.elements.addRouteBtn?.addEventListener('click', (e) => {
-      e.preventDefault();
-      window.location.href = '/admin.html';
-    });
+    // Menú admin eliminado - ahora se usa el botón directo Panel Admin
 
     // Reportar tráfico (restringido)
     this.elements.reportTrafficBtn?.addEventListener('click', () => {

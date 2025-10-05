@@ -159,6 +159,83 @@ async function startServer() {
 }
 
 /**
+ * Endpoint para obtener rutas locales desde el directorio data/
+ * GET /api/routes/local
+ */
+app.get('/api/routes/local', async (req, res) => {
+    try {
+        const dataDir = path.join(__dirname, 'data');
+        
+        // Verificar si existe el directorio data
+        try {
+            await fs.access(dataDir);
+        } catch (error) {
+            return res.json({ success: true, routes: [] });
+        }
+
+        const localRoutes = [];
+        const entries = await fs.readdir(dataDir);
+        
+        // Filtrar solo directorios numericos
+        const routeDirs = entries.filter(entry => /^\d{3}$/.test(entry));
+        
+        for (const dirName of routeDirs) {
+            const dirPath = path.join(dataDir, dirName);
+            
+            try {
+                // Leer archivo route.json
+                const routeFile = path.join(dirPath, 'route.json');
+                const routeContent = await fs.readFile(routeFile, 'utf8');
+                const routeData = JSON.parse(routeContent);
+                
+                // Buscar archivo de paradas
+                const files = await fs.readdir(dirPath);
+                const stopsFile = files.find(file => file.includes('stops.geojson'));
+                
+                let stopsData = null;
+                if (stopsFile) {
+                    const stopsPath = path.join(dirPath, stopsFile);
+                    const stopsContent = await fs.readFile(stopsPath, 'utf8');
+                    stopsData = JSON.parse(stopsContent);
+                }
+                
+                // Formatear la ruta para ser compatible con el formato esperado
+                const formattedRoute = {
+                    id: dirName,
+                    stop: dirName, // Usar el mismo ID por defecto
+                    name: routeData.name || `Ruta ${dirName}`,
+                    routeData: routeData,
+                    stopsData: stopsData,
+                    routeInfo: {
+                        horaInicio: "05:30",
+                        horaFinal: "21:45",
+                        descripcion: routeData.desc || '',
+                        mujerSegura: false,
+                        foto: `./data/${dirName}/${dirName}.png`
+                    },
+                    source: 'local' // Marcar como ruta local
+                };
+                
+                localRoutes.push(formattedRoute);
+                
+            } catch (error) {
+                console.error(`Error leyendo ruta local ${dirName}:`, error.message);
+                // Continuar con la siguiente ruta en caso de error
+            }
+        }
+        
+        res.json({ success: true, routes: localRoutes });
+        
+    } catch (error) {
+        console.error('Error cargando rutas locales:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error cargando rutas locales del sistema.' 
+        });
+    }
+});
+
+/**
  * Endpoint para obtener todas las rutas desde la base de datos
  * GET /api/routes
  */
