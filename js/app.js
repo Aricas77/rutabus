@@ -351,9 +351,6 @@ const App = {
     toggleRoutesBtn: document.getElementById('toggleRoutesBtn'),
     locationBtn: document.getElementById('locationBtn'),
     userDisplayName: document.getElementById('user-display-name'),
-    menuIcon: document.getElementById('menu-icon'),
-    adminMenu: document.getElementById('admin-menu'),
-    addRouteBtn: document.getElementById('add-route-btn'),
     guestLegend: document.getElementById('guest-legend'),
     reportTrafficBtn: document.getElementById('reportTrafficBtn')
   },
@@ -425,22 +422,6 @@ const App = {
       this.renderTraffic();
       this.renderTrafficList();
     });
-
-        // --- REPORT TRAFFIC UI ---
-    this.$reportBtn = document.getElementById('reportTrafficBtn');
-    this.$trafficModalEl = document.getElementById('trafficModal');
-    this.$trafficForm = document.getElementById('trafficForm');
-    this.$cancelPickBtn = document.getElementById('cancelPickBtn');
-    this._trafficModal = this.$trafficModalEl ? new bootstrap.Modal(this.$trafficModalEl) : null;
-
-    this.$reportBtn?.addEventListener('click', () => this.startTrafficReport());
-    this.$trafficForm?.addEventListener('submit', (e) => this.submitTrafficReport(e));
-    this.$trafficForm?.querySelectorAll('input[name="locMode"]')
-      .forEach(inp => inp.addEventListener('change', (e) => this._onLocModeChange(e)));
-    this.$cancelPickBtn?.addEventListener('click', () => this._stopPickOnMap());
-
-
-  }, 
   },
 
   
@@ -450,47 +431,85 @@ const App = {
     this.elements.toggleRoutesBtn.textContent = 'Cargando datos de rutas...';
     
     try {
-      // Primero intentar cargar desde la base de datos
-      const response = await fetch('/api/routes');
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.routes.length > 0) {
-          // Convertir datos de base de datos al formato esperado
-          this.routeData = result.routes.map(route => ({
-            id: route.id,
-            stop: route.stop,
-            name: route.name,
-            geojson: route.routeData || null,
-            stopsData: route.stopsData || null,
-            routeInfo: route.routeInfo || {}
-          }));
-          
-          // Actualizar RUTA_INFO con datos de la base de datos
-          result.routes.forEach(route => {
-            if (route.routeInfo) {
-              RUTA_INFO[route.id] = route.routeInfo;
-            }
-          });
-          
-          console.log(`Cargadas ${this.routeData.length} rutas desde la base de datos`);
-          return;
-        }
+      // Cargar rutas de la base de datos y rutas locales en paralelo
+      const dbPromise = fetch('/api/routes');
+      const localPromise = fetch('/api/routes/local');
+      
+      const [dbResponse, localResponse] = await Promise.all([dbPromise, localPromise]);
+      
+      const dbResult = dbResponse.ok ? await dbResponse.json() : { success: false, routes: [] };
+      const localResult = localResponse.ok ? await localResponse.json() : { success: false, routes: [] };
+      
+      // Combinar rutas de ambas fuentes
+      let allRoutes = [];
+      
+      // Agregar rutas de base de datos
+      if (dbResult.success && dbResult.routes.length > 0) {
+        const dbRoutes = dbResult.routes.map(route => ({
+          id: route.id,
+          stop: route.stop,
+          name: route.name,
+          geojson: route.routeData || null,
+          stopsData: route.stopsData || null,
+          routeInfo: route.routeInfo || {},
+          source: 'database'
+        }));
+        allRoutes = allRoutes.concat(dbRoutes);
+        
+        // Actualizar RUTA_INFO con datos de la base de datos
+        dbResult.routes.forEach(route => {
+          if (route.routeInfo) {
+            RUTA_INFO[route.id] = route.routeInfo;
+          }
+        });
       }
       
-      // Si no hay datos en la BD, usar datos estáticos como fallback
-      console.log('No hay rutas en la base de datos, usando datos estáticos');
+      // Agregar rutas locales
+      if (localResult.success && localResult.routes.length > 0) {
+        const localRoutes = localResult.routes.map(route => ({
+          id: route.id,
+          stop: route.stop,
+          name: route.name,
+          geojson: route.routeData || null,
+          stopsData: route.stopsData || null,
+          routeInfo: route.routeInfo || {},
+          source: 'local'
+        }));
+        allRoutes = allRoutes.concat(localRoutes);
+        
+        // Actualizar RUTA_INFO con datos locales
+        localResult.routes.forEach(route => {
+          if (route.routeInfo) {
+            RUTA_INFO[route.id] = route.routeInfo;
+          }
+        });
+      }
+      
+      if (allRoutes.length > 0) {
+        // Ordenar por ID para mejor organización
+        allRoutes.sort((a, b) => a.id.localeCompare(b.id));
+        this.routeData = allRoutes;
+        
+        const dbCount = dbResult.success ? dbResult.routes.length : 0;
+        const localCount = localResult.success ? localResult.routes.length : 0;
+        console.log(`Cargadas ${allRoutes.length} rutas: ${dbCount} de BD, ${localCount} locales`);
+        return;
+      }
+      
+      // Si no hay datos en ninguna fuente, usar datos estáticos como fallback
+      console.log('No hay rutas en BD ni locales, usando datos estáticos');
       const promises = RUTAS.map(rutaInfo =>
         this.fetchGeoJSON(`./data/${rutaInfo.id}/route.json`)
-          .then(geojson => ({ ...rutaInfo, geojson }))
+          .then(geojson => ({ ...rutaInfo, geojson, source: 'static' }))
       );
       this.routeData = await Promise.all(promises);
       
     } catch (error) {
-      console.error('Error cargando rutas desde BD, usando datos estáticos:', error);
+      console.error('Error cargando rutas, usando datos estáticos:', error);
       // Fallback a datos estáticos
       const promises = RUTAS.map(rutaInfo =>
         this.fetchGeoJSON(`./data/${rutaInfo.id}/route.json`)
-          .then(geojson => ({ ...rutaInfo, geojson }))
+          .then(geojson => ({ ...rutaInfo, geojson, source: 'static' }))
       );
       this.routeData = await Promise.all(promises);
     }
@@ -625,11 +644,6 @@ const App = {
     } else {
       this.lastUserLatLng = nowLL;
     }
-
-        // al final de _onLocationSuccess(...)
-    this.renderTraffic();
-    this.renderTrafficList();
-
   },
 
   _onLocationError(err) {
@@ -686,12 +700,43 @@ const App = {
       for (const ruta of routesToShow) {
         const li = document.createElement('li');
         li.className = 'list-group-item';
+        
+        // Agregar clase para distinguir fuentes
+        if (ruta.source === 'local') {
+          li.classList.add('route-local-item');
+        } else if (ruta.source === 'database') {
+          li.classList.add('route-database-item');
+        }
 
         const button = document.createElement('button');
         button.className = 'btn btn-link ruta-btn';
         button.dataset.ruta = ruta.id;
         button.dataset.stop = ruta.stop;
-        button.textContent = ruta.name;
+        
+        // Crear contenido del botón con indicador de fuente
+        const routeName = document.createElement('span');
+        routeName.textContent = ruta.name;
+        
+        const sourceIndicator = document.createElement('span');
+        sourceIndicator.className = 'badge ms-2';
+        if (ruta.source === 'local') {
+          sourceIndicator.className += ' badge-info';
+          sourceIndicator.textContent = 'Local';
+          sourceIndicator.style.backgroundColor = '#17a2b8';
+          sourceIndicator.style.color = 'white';
+          sourceIndicator.style.fontSize = '0.7rem';
+        } else if (ruta.source === 'database') {
+          sourceIndicator.className += ' badge-success';
+          sourceIndicator.textContent = 'BD';
+          sourceIndicator.style.backgroundColor = '#28a745';
+          sourceIndicator.style.color = 'white';
+          sourceIndicator.style.fontSize = '0.7rem';
+        }
+        
+        button.appendChild(routeName);
+        if (ruta.source && ruta.source !== 'static') {
+          button.appendChild(sourceIndicator);
+        }
 
         if (this.activeLayers[ruta.id]) {
           button.classList.add('active');
@@ -745,8 +790,9 @@ const App = {
   },
 
   isRouteNearby(ruta, userLoc, radiusKm) {
-    if (!ruta.geojson?.features?.[0]?.geometry?.coordinates) return false;
-    const coordinates = ruta.geojson.features[0].geometry.coordinates;
+    const routeGeoJSON = ruta.geojson || ruta.routeData;
+    if (!routeGeoJSON?.features?.[0]?.geometry?.coordinates) return false;
+    const coordinates = routeGeoJSON.features[0].geometry.coordinates;
     for (const point of coordinates) {
       const actualPoint = Array.isArray(point[0]) ? point[0] : point;
       const pointLoc = { lon: actualPoint[0], lat: actualPoint[1] };
@@ -795,7 +841,8 @@ const App = {
     this.activeLayers[rutaId] = {};
 
     const ruta = this.routeData.find(r => r.id === rutaId);
-    const geoRuta = ruta ? ruta.geojson : null;
+    // Manejar tanto el formato nuevo (routeData) como el antiguo (geojson)
+    const geoRuta = ruta ? (ruta.geojson || ruta.routeData) : null;
     
     // Intentar obtener paradas desde los datos de la ruta o desde archivo
     let geoStops = null;
@@ -914,20 +961,24 @@ const App = {
       restricteds.forEach(el => { el.disabled = false; el.classList.remove('requires-auth'); });
 
       const userData = JSON.parse(userString);
+      const adminPanelBtn = document.getElementById('admin-panel-btn');
+      
       if (userData.rol === 'administrador') {
         this.elements.userDisplayName.textContent = 'Administrador';
-        this.elements.menuIcon.style.display = 'block';
+        if (adminPanelBtn) adminPanelBtn.style.display = 'block';
       } else {
         const firstName = userData.nombre.split(' ')[0];
         this.elements.userDisplayName.textContent = firstName;
-        this.elements.menuIcon.style.display = 'none';
+        if (adminPanelBtn) adminPanelBtn.style.display = 'none';
       }
     } else {
       // UI de invitado
       this.elements.guestButtons.style.display = 'flex';
       this.elements.userButtons.style.display = 'none';
       this.elements.userDisplayName.textContent = 'Invitado';
-      this.elements.menuIcon.style.display = 'none';
+      
+      const adminPanelBtn = document.getElementById('admin-panel-btn');
+      if (adminPanelBtn) adminPanelBtn.style.display = 'none';
 
       // Deshabilitar controles
       restricteds.forEach(el => {
@@ -1001,22 +1052,7 @@ const App = {
       this.toggleUserLocation();
     });
 
-    // Menú admin (solo UI, ya lo restringe updateAuthUI)
-    this.elements.menuIcon.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const menu = this.elements.adminMenu;
-      menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-    });
-    window.addEventListener('click', () => {
-      if (this.elements.adminMenu.style.display === 'block') {
-        this.elements.adminMenu.style.display = 'none';
-      }
-    });
-
-    this.elements.addRouteBtn?.addEventListener('click', (e) => {
-      e.preventDefault();
-      window.location.href = '/admin.html';
-    });
+    // Menú admin eliminado - ahora se usa el botón directo Panel Admin
 
     // Reportar tráfico (restringido)
     this.elements.reportTrafficBtn?.addEventListener('click', () => {
@@ -1445,12 +1481,6 @@ const App = {
     listContainer: null
   },
 
-    pickOnMap: {
-    active: false,
-    marker: null,
-    clickHandler: null
-  },
-
   async fetchTrafficAlerts() {
     try {
       const res = await fetch('./data/traffic/alerts.json', { cache: 'no-store' });
@@ -1469,10 +1499,6 @@ const App = {
   renderTraffic() {
     if (!this.traffic.layer) return;
     this.traffic.layer.clearLayers();
-
-  this.traffic.alerts.forEach(a => {
-    const sev = Number(a.severidad) || 1;
-    const color = sev >= 5 ? '#dc2626' : sev >= 3 ? '#f59e0b' : '#22c55e';
 
     this.traffic.alerts.forEach(a => {
       const sev = Number(a.severidad) || 1;
@@ -1516,9 +1542,6 @@ const App = {
     if (!ul) return;
     ul.innerHTML = '';
 
-  const pos =
-    this.lastUserLatLng ||
-    (this.userLocation ? L.latLng(this.userLocation.lat, this.userLocation.lon) : null);
     const pos = this.userLocation || null;
 
     const items = this.traffic.alerts
@@ -1538,30 +1561,15 @@ const App = {
         return x.distKm - y.distKm;
       });
 
-      items.forEach(({ a, distKm }) => {
-        const li = document.createElement('li');
-        li.className = 'list-group-item d-flex justify-content-between align-items-start';
     items.forEach(({ a, distKm }) => {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex justify-content-between align-items-start';
 
-        const sev = Number(a.severidad) || 1;
-        const chip = `<span class="badge rounded-pill ${sev>=5?'bg-danger':sev>=3?'bg-warning text-dark':'bg-success'}">S${sev}</span>`;
-        const ruta = a.rutaId ? `<span class="badge bg-dark ms-1">Ruta ${a.rutaId}</span>` : '';
-        const distTxt = distKm != null ? `${distKm.toFixed(2)} km` : '';
       const sev = Number(a.severidad) || 1;
       const chip = `<span class="badge rounded-pill ${sev>=5?'bg-danger':sev>=3?'bg-warning text-dark':'bg-success'}">S${sev}</span>`;
       const ruta = a.rutaId ? `<span class="badge bg-dark ms-1">Ruta ${a.rutaId}</span>` : '';
       const distTxt = distKm != null ? `${distKm.toFixed(2)} km` : '';
 
-        li.innerHTML = `
-          <div class="me-auto">
-            <div class="fw-semibold text-uppercase">${a.tipo || 'Incidente'} ${chip} ${ruta}</div>
-            <small>${a.descripcion || ''}</small>
-          </div>
-          <button class="btn btn-sm btn-outline-secondary">Centrar</button>
-          <div class="ms-2 text-nowrap"><small>${distTxt}</small></div>
-        `;
       li.innerHTML = `
         <div class="me-auto">
           <div class="fw-semibold text-uppercase">${a.tipo || 'Incidente'} ${chip} ${ruta}</div>
@@ -1571,29 +1579,15 @@ const App = {
         <div class="ms-2 text-nowrap"><small>${distTxt}</small></div>
       `;
 
-        li.querySelector('button').addEventListener('click', () => {
-          if (a.coord) {
-            this.map.setView([a.coord.lat, a.coord.lng], Math.max(this.map.getZoom(), 15));
-          }
-        });
       li.querySelector('button').addEventListener('click', () => {
         if (a.coord) {
           this.map.setView([a.coord.lat, a.coord.lng], Math.max(this.map.getZoom(), 15));
         }
       });
 
-        ul.appendChild(li);
-      });
       ul.appendChild(li);
     });
 
-      if (!items.length) {
-        const li = document.createElement('li');
-        li.className = 'list-group-item';
-        li.textContent = 'Sin alertas vigentes.';
-        ul.appendChild(li);
-      }
-    },
     if (!items.length) {
       const li = document.createElement('li');
       li.className = 'list-group-item';
@@ -1614,162 +1608,6 @@ const App = {
     L.polyline(latlngs, { color: '#e11d48', weight: 6, opacity: 0.6, dashArray: '6 6' })
       .addTo(this.traffic.layer);
   },
-
-      startTrafficReport() {
-    if (!this.$trafficForm) return;
-    const f = this.$trafficForm;
-    f.reset();
-    f.elements['tipo'].value = 'congestion';
-    f.elements['severidad'].value = 3;
-    f.elements['horas'].value = 3;
-
-    // “Mi ubicación” por defecto
-    const locMy = f.querySelector('#locMyPos');
-    if (locMy) locMy.checked = true;
-    this._applyMyLocationToForm();
-
-    this.$cancelPickBtn?.classList.add('d-none');
-    this._stopPickOnMap();
-    this._trafficModal?.show();
-  },
-
-    _onLocModeChange(e) {
-    const mode = e?.target?.value;
-    if (!this.$trafficForm) return;
-
-    if (mode === 'mypos') {
-      this.$cancelPickBtn?.classList.add('d-none');
-      this._stopPickOnMap();
-      this._applyMyLocationToForm();        // ← toma GPS y oculta inputs
-    } else {
-      this.$cancelPickBtn?.classList.remove('d-none');
-      this._setCoordsRowVisible(true);      // ← muestra inputs para “Mapa”
-      this._startPickOnMap();
-    }
-  },
-
-  _startPickOnMap() {
-    if (this.pickOnMap.active) return;
-    this.pickOnMap.active = true;
-    const handler = (ev) => {
-      const { lat, lng } = ev.latlng;
-      if (!this.pickOnMap.marker) {
-        this.pickOnMap.marker = L.marker([lat, lng], { draggable: true }).addTo(this.map);
-        this.pickOnMap.marker.on('dragend', () => {
-          const p = this.pickOnMap.marker.getLatLng();
-          this._fillFormCoords(p.lat, p.lng);
-        });
-      } else {
-        this.pickOnMap.marker.setLatLng([lat, lng]);
-      }
-      this._fillFormCoords(lat, lng);
-    };
-    this.map.getContainer().style.cursor = 'crosshair';
-    this.map.on('click', handler);
-    this.pickOnMap.clickHandler = handler;
-  },
-
-  _stopPickOnMap() {
-    if (!this.pickOnMap.active) return;
-    this.pickOnMap.active = false;
-    this.map.getContainer().style.cursor = '';
-    if (this.pickOnMap.clickHandler) {
-      this.map.off('click', this.pickOnMap.clickHandler);
-      this.pickOnMap.clickHandler = null;
-    }
-  },
-
-  _fillFormCoords(lat, lng) {
-    if (!this.$trafficForm) return;
-    this.$trafficForm.elements['lat'].value = (+lat).toFixed(6);
-    this.$trafficForm.elements['lng'].value = (+lng).toFixed(6);
-  },
-
-  submitTrafficReport(e) {
-  e.preventDefault();
-  if (!this.$trafficForm) return;
-  const f = this.$trafficForm;
-
-  const tipo = f.elements['tipo'].value || 'otro';
-  const severidad = Math.min(5, Math.max(1, +f.elements['severidad'].value || 1));
-  const descripcion = f.elements['descripcion'].value?.trim() || '';
-  const horas = Math.min(24, Math.max(1, +f.elements['horas'].value || 3));
-  const rutaId = f.elements['rutaId']?.value?.trim() || null;
-  const radio = f.elements['radio'].value ? Math.max(0, +f.elements['radio'].value) : null;
-
-  const mode = f.elements['locMode'].value;
-  let lat, lng;
-
-  if (mode === 'mypos') {
-    if (!this.userLocation) {
-      alert('No tengo tu ubicación aún. Activa el botón azul o concede permiso de GPS.');
-      return;
-    }
-    lat = this.userLocation.lat;
-    lng = this.userLocation.lon;
-  } else {
-    lat = parseFloat(f.elements['lat'].value);
-    lng = parseFloat(f.elements['lng'].value);
-    if (!isFinite(lat) || !isFinite(lng)) {
-      alert('Haz click en el mapa para fijar el punto.');
-      return;
-    }
-  }
-
-  const now = new Date();
-  const alertObj = {
-    id: `u-${now.getTime()}`,
-    tipo, severidad, descripcion,
-    coord: { lat, lng },
-    radio: radio || undefined,
-    rutaId: rutaId || undefined,
-    inicio: now.toISOString(),
-    expira: new Date(now.getTime() + horas * 3600 * 1000).toISOString(),
-    fuente: 'usuario',
-    estado: 'pendiente'
-  };
-
-  const key = 'trafficDrafts';
-  const drafts = JSON.parse(localStorage.getItem(key) || '[]');
-  drafts.push(alertObj);
-  localStorage.setItem(key, JSON.stringify(drafts));
-
-  this.traffic.alerts = [alertObj, ...(this.traffic.alerts || [])];
-  this.renderTraffic();
-  this.renderTrafficList();
-
-  this._trafficModal?.hide();
-  this._stopPickOnMap();
-  alert('¡Gracias! Tu alerta quedó como "pendiente".');
-},
-
-
-  _setCoordsRowVisible(show) {
-  const row = this.$trafficForm?.querySelector('#coordsRow');
-  if (!row || !this.$trafficForm) return;
-  row.style.display = show ? '' : 'none';
-  const lat = this.$trafficForm.elements['lat'];
-  const lng = this.$trafficForm.elements['lng'];
-  // cuando se muestra (modo mapa) permitimos escribir y pedimos requeridos
-  lat.readOnly = !show; lng.readOnly = !show;
-  lat.required = show;  lng.required = show;
-},
-
-_applyMyLocationToForm() {
-  const f = this.$trafficForm;
-  if (!f) return;
-  const my = this.userLocation;
-  if (my) {
-    f.elements['lat'].value = (+my.lat).toFixed(6);
-    f.elements['lng'].value = (+my.lon).toFixed(6);
-  } else {
-    f.elements['lat'].value = '';
-    f.elements['lng'].value = '';
-  }
-  this._setCoordsRowVisible(false); // oculta inputs con “Mi ubicación”
-},
-
-
 
   _nudgeGuest(featureName = '') {
     if (this.elements.guestLegend) {

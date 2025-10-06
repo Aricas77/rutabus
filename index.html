@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -46,15 +47,9 @@
                   <div id="user-buttons" style="display: none;">
                       <button id="logout-btn" class="auth-btn auth-btn-logout">Cerrar Sesión</button>
                       
-                      <!-- Contenedor del menú de administrador -->
-                      <div class="menu-container">
-                          <img src="./img/menu.png" alt="Menú" id="menu-icon" class="menu-icon">
-                          <!-- Menú desplegable con opciones de administración -->
-                          <div id="admin-menu" class="admin-dropdown">
-                              <a href="#" id="add-route-btn">Agregar Ruta</a>
-                              <a href="#" id="edit-route-btn">Editar Ruta</a>
-                              <a href="#" id="delete-route-btn">Eliminar Ruta</a>
-                          </div>
+                      <!-- Botón directo para ir al panel de administrador -->
+                      <div id="admin-panel-btn" class="menu-container" style="display: none;">
+                          <a href="/admin.html" class="auth-btn" style="background-color: #0d6efd; color: white; text-decoration: none;">Panel Admin</a>
                       </div>
                   </div>
               </div>
@@ -123,98 +118,5 @@
     <!-- Script principal de la aplicación -->
     <script src="./js/app.js" defer></script>
 
-        <!-- Modal Reportar Tráfico -->
-    <div class="modal fade" id="trafficModal" tabindex="-1" aria-labelledby="trafficModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <form class="modal-content" id="trafficForm">
-        <div class="modal-header">
-            <h5 class="modal-title" id="trafficModalLabel">Reportar tráfico</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body">
-            <div class="mb-2">
-            <label class="form-label">Tipo de incidente</label>
-            <select class="form-select" name="tipo" required>
-                <option value="congestion">Congestión</option>
-                <option value="accidente">Accidente</option>
-                <option value="obra">Obra</option>
-                <option value="bloqueo">Bloqueo</option>
-                <option value="inundacion">Inundación</option>
-                <option value="otro">Otro</option>
-            </select>
-            </div>
-            <div class="mb-2">
-            <label class="form-label">Severidad (1-5)</label>
-            <input type="number" class="form-control" name="severidad" min="1" max="5" value="3" required>
-            </div>
-            <div class="mb-2">
-            <label class="form-label">Descripción</label>
-            <input type="text" class="form-control" name="descripcion" maxlength="140" placeholder="Ej. Carga pesada en Lázaro Cárdenas">
-            </div>
-            <div class="mb-2">
-            <label class="form-label">Vigencia (horas)</label>
-            <input type="number" class="form-control" name="horas" min="1" max="24" value="3" required>
-            </div>
-            <div class="mb-2">
-            <label class="form-label">Asociar a ruta (opcional)</label>
-            <input type="text" class="form-control" name="rutaId" placeholder="Ej. 070">
-            </div>
-            <hr class="my-3">
-            <div class="mb-2">
-            <label class="form-label d-block">Ubicación del incidente</label>
-            <div class="btn-group w-100 mb-2" role="group">
-                <input type="radio" class="btn-check" name="locMode" id="locMyPos" value="mypos" autocomplete="off" checked>
-                <label class="btn btn-outline-primary" for="locMyPos">Mi ubicación</label>
-                <input type="radio" class="btn-check" name="locMode" id="locPick" value="pick" autocomplete="off">
-                <label class="btn btn-outline-primary" for="locPick">Elegir en el mapa</label>
-            </div>
-            <div class="row g-2">
-                <div class="col">
-                <input type="number" step="any" class="form-control" name="lat" placeholder="lat" required>
-                </div>
-                <div class="col">
-                <input type="number" step="any" class="form-control" name="lng" placeholder="lng" required>
-                </div>
-                <div class="col-12">
-                <label class="form-label mt-2">Radio (m) opcional</label>
-                <input type="number" class="form-control" name="radio" min="0" step="10" placeholder="Ej. 120">
-                </div>
-            </div>
-            <div class="form-text">Con “Elegir en el mapa”, haz click para fijar el punto.</div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button type="button" id="cancelPickBtn" class="btn btn-outline-secondary d-none">Salir de modo mapa</button>
-            <button type="submit" class="btn btn-danger">Guardar alerta</button>
-        </div>
-        </form>
-            <!-- ... dentro del modal ... -->
-    <div class="btn-group w-100 mb-2" role="group">
-    <input type="radio" class="btn-check" name="locMode" id="locMyPos" value="mypos" checked>
-    <label class="btn btn-outline-primary" for="locMyPos">Mi ubicación</label>
-
-    <input type="radio" class="btn-check" name="locMode" id="locPick" value="pick">
-    <label class="btn btn-outline-primary" for="locPick">Elegir en el mapa</label>
-    </div>
-
-    <!-- 👇 Esta fila se oculta cuando está “Mi ubicación” -->
-    <div class="row g-2" id="coordsRow" style="display:none">
-    <div class="col">
-        <input type="number" step="any" class="form-control" name="lat" placeholder="lat">
-    </div>
-    <div class="col">
-        <input type="number" step="any" class="form-control" name="lng" placeholder="lng">
-    </div>
-    <div class="col-12">
-        <label class="form-label mt-2">Radio (m) opcional</label>
-        <input type="number" class="form-control" name="radio" min="0" step="10" placeholder="Ej. 120">
-    </div>
-    </div>
-
-    </div>
-    </div>
-
-
 </body>
 </html>
-
