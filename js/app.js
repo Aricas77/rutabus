@@ -422,6 +422,22 @@ const App = {
       this.renderTraffic();
       this.renderTrafficList();
     });
+
+        // --- REPORT TRAFFIC UI ---
+    this.$reportBtn = document.getElementById('reportTrafficBtn');
+    this.$trafficModalEl = document.getElementById('trafficModal');
+    this.$trafficForm = document.getElementById('trafficForm');
+    this.$cancelPickBtn = document.getElementById('cancelPickBtn');
+    this._trafficModal = this.$trafficModalEl ? new bootstrap.Modal(this.$trafficModalEl) : null;
+
+    this.$reportBtn?.addEventListener('click', () => this.startTrafficReport());
+    this.$trafficForm?.addEventListener('submit', (e) => this.submitTrafficReport(e));
+    this.$trafficForm?.querySelectorAll('input[name="locMode"]')
+      .forEach(inp => inp.addEventListener('change', (e) => this._onLocModeChange(e)));
+    this.$cancelPickBtn?.addEventListener('click', () => this._stopPickOnMap());
+
+
+  }, 
   },
 
   
@@ -644,6 +660,11 @@ const App = {
     } else {
       this.lastUserLatLng = nowLL;
     }
+
+        // al final de _onLocationSuccess(...)
+    this.renderTraffic();
+    this.renderTrafficList();
+
   },
 
   _onLocationError(err) {
@@ -1481,6 +1502,12 @@ const App = {
     listContainer: null
   },
 
+    pickOnMap: {
+    active: false,
+    marker: null,
+    clickHandler: null
+  },
+
   async fetchTrafficAlerts() {
     try {
       const res = await fetch('./data/traffic/alerts.json', { cache: 'no-store' });
@@ -1499,6 +1526,10 @@ const App = {
   renderTraffic() {
     if (!this.traffic.layer) return;
     this.traffic.layer.clearLayers();
+
+  this.traffic.alerts.forEach(a => {
+    const sev = Number(a.severidad) || 1;
+    const color = sev >= 5 ? '#dc2626' : sev >= 3 ? '#f59e0b' : '#22c55e';
 
     this.traffic.alerts.forEach(a => {
       const sev = Number(a.severidad) || 1;
@@ -1542,6 +1573,9 @@ const App = {
     if (!ul) return;
     ul.innerHTML = '';
 
+  const pos =
+    this.lastUserLatLng ||
+    (this.userLocation ? L.latLng(this.userLocation.lat, this.userLocation.lon) : null);
     const pos = this.userLocation || null;
 
     const items = this.traffic.alerts
@@ -1561,15 +1595,30 @@ const App = {
         return x.distKm - y.distKm;
       });
 
+      items.forEach(({ a, distKm }) => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-start';
     items.forEach(({ a, distKm }) => {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex justify-content-between align-items-start';
 
+        const sev = Number(a.severidad) || 1;
+        const chip = `<span class="badge rounded-pill ${sev>=5?'bg-danger':sev>=3?'bg-warning text-dark':'bg-success'}">S${sev}</span>`;
+        const ruta = a.rutaId ? `<span class="badge bg-dark ms-1">Ruta ${a.rutaId}</span>` : '';
+        const distTxt = distKm != null ? `${distKm.toFixed(2)} km` : '';
       const sev = Number(a.severidad) || 1;
       const chip = `<span class="badge rounded-pill ${sev>=5?'bg-danger':sev>=3?'bg-warning text-dark':'bg-success'}">S${sev}</span>`;
       const ruta = a.rutaId ? `<span class="badge bg-dark ms-1">Ruta ${a.rutaId}</span>` : '';
       const distTxt = distKm != null ? `${distKm.toFixed(2)} km` : '';
 
+        li.innerHTML = `
+          <div class="me-auto">
+            <div class="fw-semibold text-uppercase">${a.tipo || 'Incidente'} ${chip} ${ruta}</div>
+            <small>${a.descripcion || ''}</small>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary">Centrar</button>
+          <div class="ms-2 text-nowrap"><small>${distTxt}</small></div>
+        `;
       li.innerHTML = `
         <div class="me-auto">
           <div class="fw-semibold text-uppercase">${a.tipo || 'Incidente'} ${chip} ${ruta}</div>
@@ -1579,15 +1628,29 @@ const App = {
         <div class="ms-2 text-nowrap"><small>${distTxt}</small></div>
       `;
 
+        li.querySelector('button').addEventListener('click', () => {
+          if (a.coord) {
+            this.map.setView([a.coord.lat, a.coord.lng], Math.max(this.map.getZoom(), 15));
+          }
+        });
       li.querySelector('button').addEventListener('click', () => {
         if (a.coord) {
           this.map.setView([a.coord.lat, a.coord.lng], Math.max(this.map.getZoom(), 15));
         }
       });
 
+        ul.appendChild(li);
+      });
       ul.appendChild(li);
     });
 
+      if (!items.length) {
+        const li = document.createElement('li');
+        li.className = 'list-group-item';
+        li.textContent = 'Sin alertas vigentes.';
+        ul.appendChild(li);
+      }
+    },
     if (!items.length) {
       const li = document.createElement('li');
       li.className = 'list-group-item';
@@ -1608,6 +1671,162 @@ const App = {
     L.polyline(latlngs, { color: '#e11d48', weight: 6, opacity: 0.6, dashArray: '6 6' })
       .addTo(this.traffic.layer);
   },
+
+      startTrafficReport() {
+    if (!this.$trafficForm) return;
+    const f = this.$trafficForm;
+    f.reset();
+    f.elements['tipo'].value = 'congestion';
+    f.elements['severidad'].value = 3;
+    f.elements['horas'].value = 3;
+
+    // “Mi ubicación” por defecto
+    const locMy = f.querySelector('#locMyPos');
+    if (locMy) locMy.checked = true;
+    this._applyMyLocationToForm();
+
+    this.$cancelPickBtn?.classList.add('d-none');
+    this._stopPickOnMap();
+    this._trafficModal?.show();
+  },
+
+    _onLocModeChange(e) {
+    const mode = e?.target?.value;
+    if (!this.$trafficForm) return;
+
+    if (mode === 'mypos') {
+      this.$cancelPickBtn?.classList.add('d-none');
+      this._stopPickOnMap();
+      this._applyMyLocationToForm();        // ← toma GPS y oculta inputs
+    } else {
+      this.$cancelPickBtn?.classList.remove('d-none');
+      this._setCoordsRowVisible(true);      // ← muestra inputs para “Mapa”
+      this._startPickOnMap();
+    }
+  },
+
+  _startPickOnMap() {
+    if (this.pickOnMap.active) return;
+    this.pickOnMap.active = true;
+    const handler = (ev) => {
+      const { lat, lng } = ev.latlng;
+      if (!this.pickOnMap.marker) {
+        this.pickOnMap.marker = L.marker([lat, lng], { draggable: true }).addTo(this.map);
+        this.pickOnMap.marker.on('dragend', () => {
+          const p = this.pickOnMap.marker.getLatLng();
+          this._fillFormCoords(p.lat, p.lng);
+        });
+      } else {
+        this.pickOnMap.marker.setLatLng([lat, lng]);
+      }
+      this._fillFormCoords(lat, lng);
+    };
+    this.map.getContainer().style.cursor = 'crosshair';
+    this.map.on('click', handler);
+    this.pickOnMap.clickHandler = handler;
+  },
+
+  _stopPickOnMap() {
+    if (!this.pickOnMap.active) return;
+    this.pickOnMap.active = false;
+    this.map.getContainer().style.cursor = '';
+    if (this.pickOnMap.clickHandler) {
+      this.map.off('click', this.pickOnMap.clickHandler);
+      this.pickOnMap.clickHandler = null;
+    }
+  },
+
+  _fillFormCoords(lat, lng) {
+    if (!this.$trafficForm) return;
+    this.$trafficForm.elements['lat'].value = (+lat).toFixed(6);
+    this.$trafficForm.elements['lng'].value = (+lng).toFixed(6);
+  },
+
+  submitTrafficReport(e) {
+  e.preventDefault();
+  if (!this.$trafficForm) return;
+  const f = this.$trafficForm;
+
+  const tipo = f.elements['tipo'].value || 'otro';
+  const severidad = Math.min(5, Math.max(1, +f.elements['severidad'].value || 1));
+  const descripcion = f.elements['descripcion'].value?.trim() || '';
+  const horas = Math.min(24, Math.max(1, +f.elements['horas'].value || 3));
+  const rutaId = f.elements['rutaId']?.value?.trim() || null;
+  const radio = f.elements['radio'].value ? Math.max(0, +f.elements['radio'].value) : null;
+
+  const mode = f.elements['locMode'].value;
+  let lat, lng;
+
+  if (mode === 'mypos') {
+    if (!this.userLocation) {
+      alert('No tengo tu ubicación aún. Activa el botón azul o concede permiso de GPS.');
+      return;
+    }
+    lat = this.userLocation.lat;
+    lng = this.userLocation.lon;
+  } else {
+    lat = parseFloat(f.elements['lat'].value);
+    lng = parseFloat(f.elements['lng'].value);
+    if (!isFinite(lat) || !isFinite(lng)) {
+      alert('Haz click en el mapa para fijar el punto.');
+      return;
+    }
+  }
+
+  const now = new Date();
+  const alertObj = {
+    id: `u-${now.getTime()}`,
+    tipo, severidad, descripcion,
+    coord: { lat, lng },
+    radio: radio || undefined,
+    rutaId: rutaId || undefined,
+    inicio: now.toISOString(),
+    expira: new Date(now.getTime() + horas * 3600 * 1000).toISOString(),
+    fuente: 'usuario',
+    estado: 'pendiente'
+  };
+
+  const key = 'trafficDrafts';
+  const drafts = JSON.parse(localStorage.getItem(key) || '[]');
+  drafts.push(alertObj);
+  localStorage.setItem(key, JSON.stringify(drafts));
+
+  this.traffic.alerts = [alertObj, ...(this.traffic.alerts || [])];
+  this.renderTraffic();
+  this.renderTrafficList();
+
+  this._trafficModal?.hide();
+  this._stopPickOnMap();
+  alert('¡Gracias! Tu alerta quedó como "pendiente".');
+},
+
+
+  _setCoordsRowVisible(show) {
+  const row = this.$trafficForm?.querySelector('#coordsRow');
+  if (!row || !this.$trafficForm) return;
+  row.style.display = show ? '' : 'none';
+  const lat = this.$trafficForm.elements['lat'];
+  const lng = this.$trafficForm.elements['lng'];
+  // cuando se muestra (modo mapa) permitimos escribir y pedimos requeridos
+  lat.readOnly = !show; lng.readOnly = !show;
+  lat.required = show;  lng.required = show;
+},
+
+_applyMyLocationToForm() {
+  const f = this.$trafficForm;
+  if (!f) return;
+  const my = this.userLocation;
+  if (my) {
+    f.elements['lat'].value = (+my.lat).toFixed(6);
+    f.elements['lng'].value = (+my.lon).toFixed(6);
+  } else {
+    f.elements['lat'].value = '';
+    f.elements['lng'].value = '';
+  }
+  this._setCoordsRowVisible(false); // oculta inputs con “Mi ubicación”
+},
+
+
 
   _nudgeGuest(featureName = '') {
     if (this.elements.guestLegend) {
