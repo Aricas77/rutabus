@@ -337,6 +337,12 @@ const App = {
     showAccuracyCircle: false
   },
 
+  pickOnMap: {
+    active: false,
+    marker: null,
+    clickHandler: null
+  },
+
   proximityCircle: null,
 
   elements: {
@@ -414,7 +420,26 @@ const App = {
     this.traffic.layer = L.layerGroup().addTo(this.map);
     this.traffic.listContainer = document.getElementById('trafficList');
 
-    // Bloqueamos su handler si es invitado (se refuerza en setupEventListeners)
+        // --- REPORT TRAFFIC UI ---
+    this.$reportBtn      = document.getElementById('reportTrafficBtn');
+    this.$trafficModalEl = document.getElementById('trafficModal');
+    this.$trafficForm    = document.getElementById('trafficForm');
+    this.$cancelPickBtn  = document.getElementById('cancelPickBtn');
+    this._trafficModal   = this.$trafficModalEl ? new bootstrap.Modal(this.$trafficModalEl) : null;
+
+    // Click: Reportar tráfico (gated)
+    this.$reportBtn?.addEventListener('click', () => {
+      if (!this.isAuthenticated()) return this._nudgeGuest('Reportar tráfico');
+      this.startTrafficReport();
+    });
+
+    // Cambios en el modal
+    this.$trafficForm?.addEventListener('submit', (e) => this.submitTrafficReport(e));
+    this.$trafficForm?.querySelectorAll('input[name="locMode"]')
+      .forEach(inp => inp.addEventListener('change', (e) => this._onLocModeChange(e)));
+    this.$cancelPickBtn?.addEventListener('click', () => this._stopPickOnMap());
+
+    // Click: Ver alertas (gated)
     this.$toggleTrafficBtn = document.getElementById('toggleTrafficBtn');
     this.$toggleTrafficBtn?.addEventListener('click', async () => {
       if (!this.isAuthenticated()) return this._nudgeGuest('Ver alertas de tráfico');
@@ -422,7 +447,18 @@ const App = {
       this.renderTraffic();
       this.renderTrafficList();
     });
+
+    // Click: Mi ubicación (gated)
+    this.$locationBtn = document.getElementById('locationBtn');
+    this.$locationBtn?.addEventListener('click', () => {
+      if (!this.isAuthenticated()) return this._nudgeGuest('Seguir mi ubicación');
+      this.toggleFollowUser(); // o el método que ya usas para iniciar watchPosition
+    });
+
+
   },
+
+  
 
   
 
@@ -644,6 +680,9 @@ const App = {
     } else {
       this.lastUserLatLng = nowLL;
     }
+    this.renderTraffic();
+    this.renderTrafficList();
+
   },
 
   _onLocationError(err) {
@@ -1054,11 +1093,7 @@ const App = {
 
     // Menú admin eliminado - ahora se usa el botón directo Panel Admin
 
-    // Reportar tráfico (restringido)
-    this.elements.reportTrafficBtn?.addEventListener('click', () => {
-      if (!this.isAuthenticated()) return this._nudgeGuest('Reportar tráfico');
-      alert('Aquí abrirías tu modal/form para reportar tráfico (solo usuarios).');
-    });
+
   },
 
   // --- Helpers de red / util ---
@@ -1481,20 +1516,37 @@ const App = {
     listContainer: null
   },
 
-  async fetchTrafficAlerts() {
-    try {
-      const res = await fetch('./data/traffic/alerts.json', { cache: 'no-store' });
-      const all = await res.json();
-      const now = Date.now();
-      this.traffic.alerts = all.filter(a => {
-        const exp = a.expira ? Date.parse(a.expira) : now + 3600000;
-        return (a.estado === 'aprobada') && (exp > now);
-      });
-    } catch (e) {
-      console.error('Error cargando alerts.json', e);
-      this.traffic.alerts = [];
-    }
-  },
+      // Carga alertas aprobadas del JSON + agrega borradores locales (pendientes no vencidas)
+    async fetchTrafficAlerts() {
+      try {
+        const res = await fetch('./data/traffic/alerts.json', { cache: 'no-store' });
+        const all = await res.json();
+        const now = Date.now();
+
+        // Aprobadas (vigentes)
+        const approved = all.filter(a => {
+          const exp = a.expira ? Date.parse(a.expira) : now + 3600000; // 1h por defecto si no trae expira
+          return (a.estado === 'aprobada') && (exp > now);
+        });
+
+        // Borradores locales (pendientes) guardados por el usuario en esta máquina
+        const drafts = JSON.parse(localStorage.getItem('trafficDrafts') || '[]')
+          .filter(a => Date.parse(a.expira || 0) > now);
+
+        // Mezcla: primero borradores (para que el usuario vea lo que acaba de reportar),
+        // luego aprobadas del JSON
+        this.traffic.alerts = [...drafts, ...approved];
+
+      } catch (e) {
+        console.error('Error cargando alerts.json', e);
+        // En caso de error de red, al menos muestra borradores locales vigentes
+        const now = Date.now();
+        const drafts = JSON.parse(localStorage.getItem('trafficDrafts') || '[]')
+          .filter(a => Date.parse(a.expira || 0) > now);
+        this.traffic.alerts = drafts;
+      }
+    },
+
 
   renderTraffic() {
     if (!this.traffic.layer) return;
