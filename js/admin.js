@@ -386,29 +386,10 @@ class RouteAdmin {
         this.editingRouteId = null;
         this.selectedRoute = null;
         
-        // Rehabilitar todos los elementos del formulario
-        const formElements = [
-            this.elements.routeName,
-            this.elements.routeId,
-            this.elements.routeStop,
-            this.elements.horaInicio,
-            this.elements.horaFinal,
-            this.elements.mujerSegura,
-            this.elements.descripcion
-        ];
-        
-        formElements.forEach(element => {
-            if (element) {
-                element.disabled = false;
-                element.style.backgroundColor = '';
-            }
-        });
-        
         // Actualizar el botón del formulario
         const submitBtn = this.elements.form.querySelector('button[type="submit"]');
         submitBtn.textContent = 'Guardar Ruta';
         submitBtn.className = 'btn btn-primary w-100';
-        submitBtn.disabled = false;
         
         // Limpiar selección visual
         const selectedItems = this.elements.existingRoutesContainer.querySelectorAll('.route-item.selected');
@@ -418,55 +399,22 @@ class RouteAdmin {
     }
     
     /**
-     * Carga las rutas existentes desde la base de datos y archivos locales
+     * Carga las rutas existentes desde la base de datos
      */
     async loadExistingRoutes() {
         try {
             this.showMessage('Cargando rutas existentes...', 'info');
             
-            // Cargar rutas de la base de datos
-            const dbPromise = fetch('/api/routes');
+            const response = await fetch('/api/routes');
+            const result = await response.json();
             
-            // Cargar rutas locales
-            const localPromise = fetch('/api/routes/local');
-            
-            // Ejecutar ambas peticiones en paralelo
-            const [dbResponse, localResponse] = await Promise.all([dbPromise, localPromise]);
-            
-            const dbResult = await dbResponse.json();
-            const localResult = await localResponse.json();
-            
-            // Combinar las rutas
-            let allRoutes = [];
-            
-            if (dbResult.success) {
-                // Marcar rutas de DB como 'database'
-                const dbRoutes = dbResult.routes.map(route => ({
-                    ...route,
-                    source: 'database'
-                }));
-                allRoutes = allRoutes.concat(dbRoutes);
+            if (result.success) {
+                this.existingRoutes = result.routes;
+                this.renderExistingRoutes();
+                this.showMessage(`Cargadas ${this.existingRoutes.length} rutas existentes.`, 'success');
+            } else {
+                this.showMessage('No se pudieron cargar las rutas existentes.', 'error');
             }
-            
-            if (localResult.success) {
-                // Las rutas locales ya tienen la marca 'local'
-                allRoutes = allRoutes.concat(localResult.routes);
-            }
-            
-            // Ordenar por ID para mejor visualización
-            allRoutes.sort((a, b) => a.id.localeCompare(b.id));
-            
-            this.existingRoutes = allRoutes;
-            this.renderExistingRoutes();
-            
-            const dbCount = dbResult.success ? dbResult.routes.length : 0;
-            const localCount = localResult.success ? localResult.routes.length : 0;
-            const totalCount = allRoutes.length;
-            
-            this.showMessage(
-                `Cargadas ${totalCount} rutas: ${dbCount} de base de datos, ${localCount} locales.`, 
-                'success'
-            );
             
         } catch (error) {
             console.error('Error cargando rutas existentes:', error);
@@ -486,27 +434,19 @@ class RouteAdmin {
         }
         
         const routeItems = this.existingRoutes.map(route => {
-            const isLocal = route.source === 'local';
-            const sourceLabel = isLocal ? 'Local' : 'BD';
-            const sourceClass = isLocal ? 'route-local' : 'route-database';
-            const editButtonClass = isLocal ? 'btn-info' : 'btn-warning';
-            
             return `
-                <div class="route-item ${sourceClass}" data-route-id="${route.id}">
+                <div class="route-item" data-route-id="${route.id}">
                     <div class="route-item-info">
-                        <div class="route-item-name">
-                            ${route.name}
-                            <span class="badge badge-sm ${isLocal ? 'badge-info' : 'badge-secondary'}">${sourceLabel}</span>
-                        </div>
+                        <div class="route-item-name">${route.name}</div>
                         <div class="route-item-id">ID: ${route.id} | Stop: ${route.stop}</div>
                     </div>
                     <div class="route-item-actions">
-                        <button class="btn ${editButtonClass} btn-xs" onclick="routeAdmin.editRoute('${route.id}')" title="${isLocal ? 'Editar ruta local' : 'Editar ruta de base de datos'}">
+                        <button class="btn btn-warning btn-xs" onclick="routeAdmin.editRoute('${route.id}')">
                             Editar
                         </button>
-                        ${!isLocal ? `<button class="btn btn-danger btn-xs" onclick="routeAdmin.deleteRoute('${route.id}')">
+                        <button class="btn btn-danger btn-xs" onclick="routeAdmin.deleteRoute('${route.id}')">
                             Eliminar
-                        </button>` : '<span class="text-muted small">Solo lectura</span>'}
+                        </button>
                     </div>
                 </div>
             `;
@@ -553,14 +493,6 @@ class RouteAdmin {
         const route = this.existingRoutes.find(r => r.id === routeId);
         if (!route) {
             this.showMessage('Ruta no encontrada.', 'error');
-            return;
-        }
-        
-        // Verificar si es una ruta local (solo lectura)
-        if (route.source === 'local') {
-            this.showMessage('Las rutas locales son de solo lectura. Puedes visualizarlas pero no editarlas.', 'warning');
-            // Solo cargar para visualización, no para edición
-            this.loadRouteForVisualization(route);
             return;
         }
         
@@ -634,106 +566,6 @@ class RouteAdmin {
         }
         
         this.showMessage(`Editando ruta: ${route.name}`, 'info');
-    }
-    
-    /**
-     * Carga una ruta solo para visualización (rutas locales)
-     */
-    loadRouteForVisualization(route) {
-        // Llenar el formulario con los datos existentes (solo lectura)
-        this.elements.routeName.value = route.name || '';
-        this.elements.routeId.value = route.id || '';
-        this.elements.routeStop.value = route.stop || '';
-        
-        if (route.routeInfo) {
-            this.elements.horaInicio.value = route.routeInfo.horaInicio || '05:30';
-            this.elements.horaFinal.value = route.routeInfo.horaFinal || '21:45';
-            this.elements.mujerSegura.checked = route.routeInfo.mujerSegura || false;
-            this.elements.descripcion.value = route.routeInfo.descripcion || '';
-        }
-        
-        // Deshabilitar el formulario para evitar edición
-        this.disableFormForVisualization();
-        
-        // Cargar geometrías en el mapa
-        this.drawnItems.clearLayers();
-        this.routeLayer = null;
-        
-        // Cargar ruta
-        if (route.routeData && route.routeData.features) {
-            route.routeData.features.forEach(feature => {
-                if (feature.geometry.type === 'LineString') {
-                    const layer = L.geoJSON(feature, {
-                        style: {
-                            color: '#17a2b8', // Color diferente para rutas locales
-                            weight: 4,
-                            opacity: 0.8
-                        }
-                    });
-                    
-                    layer.eachLayer(subLayer => {
-                        this.drawnItems.addLayer(subLayer);
-                        this.routeLayer = subLayer;
-                    });
-                }
-            });
-        }
-        
-        // Cargar paradas
-        if (route.stopsData && route.stopsData.features) {
-            route.stopsData.features.forEach(feature => {
-                if (feature.geometry.type === 'Point') {
-                    const coords = feature.geometry.coordinates;
-                    const marker = L.marker([coords[1], coords[0]], {
-                        icon: L.icon({
-                            iconUrl: 'https://api.iconify.design/mdi/bus-stop.svg?color=%2317a2b8',
-                            iconSize: [25, 25],
-                            iconAnchor: [12, 12],
-                            popupAnchor: [0, -12]
-                        })
-                    });
-                    
-                    const stopName = feature.properties.name || `Parada ${feature.properties.sequence + 1}`;
-                    marker.bindPopup(stopName + ' (Local)');
-                    this.drawnItems.addLayer(marker);
-                }
-            });
-        }
-        
-        // Hacer zoom a la ruta cargada
-        if (this.drawnItems.getLayers().length > 0) {
-            this.map.fitBounds(this.drawnItems.getBounds());
-        }
-        
-        this.showMessage(`Visualizando ruta local: ${route.name}`, 'info');
-    }
-    
-    /**
-     * Deshabilita el formulario para visualización de rutas locales
-     */
-    disableFormForVisualization() {
-        const formElements = [
-            this.elements.routeName,
-            this.elements.routeId,
-            this.elements.routeStop,
-            this.elements.horaInicio,
-            this.elements.horaFinal,
-            this.elements.mujerSegura,
-            this.elements.descripcion
-        ];
-        
-        formElements.forEach(element => {
-            if (element) {
-                element.disabled = true;
-                element.style.backgroundColor = '#f8f9fa';
-            }
-        });
-        
-        // Cambiar el botón del formulario
-        const submitBtn = this.elements.form.querySelector('button[type="submit"]');
-        submitBtn.textContent = 'Ruta de Solo Lectura';
-        submitBtn.className = 'btn btn-secondary w-100';
-        submitBtn.disabled = true;
     }
     
     /**

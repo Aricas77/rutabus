@@ -46,9 +46,15 @@
                   <div id="user-buttons" style="display: none;">
                       <button id="logout-btn" class="auth-btn auth-btn-logout">Cerrar Sesión</button>
                       
-                      <!-- Botón directo para ir al panel de administrador -->
-                      <div id="admin-panel-btn" class="menu-container" style="display: none;">
-                          <a href="/admin.html" class="auth-btn" style="background-color: #0d6efd; color: white; text-decoration: none;">Panel Admin</a>
+                      <!-- Contenedor del menú de administrador -->
+                      <div class="menu-container">
+                          <img src="./img/menu.png" alt="Menú" id="menu-icon" class="menu-icon">
+                          <!-- Menú desplegable con opciones de administración -->
+                          <div id="admin-menu" class="admin-dropdown">
+                              <a href="#" id="add-route-btn">Agregar Ruta</a>
+                              <a href="#" id="edit-route-btn">Editar Ruta</a>
+                              <a href="#" id="delete-route-btn">Eliminar Ruta</a>
+                          </div>
                       </div>
                   </div>
               </div>
