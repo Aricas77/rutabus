@@ -153,168 +153,170 @@ const RUTAS = [
     { id: "152", stop: "152", name: "Ruta 152: Circuito Precidentes - Rebsamen - Xalapa 2000 - Arco Sur - Trancas - Lazaro Cardenas - Ruiz Cortinez - Sauces - Velodromo" }
 ];
 
-  // --- Datos de ejemplo para el detalle de cada ruta ---
-  const RUTA_INFO = {
-  "001": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 37, duracionMin: 80, mujerSegura: false, foto: "./data/001/001.png" },
-  "002": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 25, duracionMin: 86, mujerSegura: true, foto: "./data/002/002.png" },
-  "003": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6.2, duracionMin: 25, mujerSegura: false, foto: "./data/003/003.png" },
-  "004": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6.2, duracionMin: 25, mujerSegura: false, foto: "./data/004/004.png" },
-  "005": { horaInicio: "6:30", horaFinal: "21:45", distanciaKm: 5.5, duracionMin: 25, mujerSegura: false, foto: "./data/005/005.png" },
-  "006": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 46, mujerSegura: false, foto: "./data/006/006.png" },
-  "007": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 12, duracionMin: 46, mujerSegura: false, foto: "./data/007/007.png" },
-  "008": { horaInicio: "5:00", horaFinal: "21:45", distanciaKm: 16, duracionMin: 55, mujerSegura: false, foto: "./data/008/008.png" },
-  "009": { horaInicio: "5:00", horaFinal: "21:45", distanciaKm: 12, duracionMin: 46, mujerSegura: false, foto: "./data/009/009.png" },
-  "010": { horaInicio: "5:40", horaFinal: "21:45", distanciaKm: 12, duracionMin: 46, mujerSegura: true, foto: "./data/010/010.png" },
-  "011": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 46, mujerSegura: false, foto: "./data/011/011.png" },
-  "012": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 46, mujerSegura: false, foto: "./data/012/012.png" },
-  "013": { horaInicio: "5:45", horaFinal: "21:45", distanciaKm: 10, duracionMin: 46, mujerSegura: true, foto: "./data/013/013.png" },
-  "014": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 10, duracionMin: 46, mujerSegura: false, foto: "./data/014/014.png" },
-  "015": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 27, duracionMin: 88, mujerSegura: false, foto: "./data/015/015.png" },
-  "016": { horaInicio: "6:00", horaFinal: "21:45", distanciaKm: 5.4, duracionMin: 25, mujerSegura: false, foto: "./data/016/016.png" },
-  "017": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 5.4, duracionMin: 25, mujerSegura: false, foto: "./data/017/017.png" },
-  "018": { horaInicio: "6:30", horaFinal: "21:45", distanciaKm: 10, duracionMin: 46, mujerSegura: false, foto: "./data/018/018.png" },
-  "019": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.8, duracionMin: 46, mujerSegura: false, foto: "./data/019/019.png" },
-  "020": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 26, duracionMin: 86, mujerSegura: false, foto: "./data/020/020.png" },
-  "021": { horaInicio: "7:30", horaFinal: "21:45", distanciaKm: 18, duracionMin: 60, mujerSegura: false, foto: "./data/021/021.png" },
-  "022": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 14, duracionMin: 50, mujerSegura: false, foto: "./data/022/022.png" },
-  "023": { horaInicio: "7:00", horaFinal: "21:45", distanciaKm: 14, duracionMin: 50, mujerSegura: true, foto: "./data/023/023.png" },
-  "024": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 14, duracionMin: 50, mujerSegura: false, foto: "./data/023/023.png" },
-  "025": { horaInicio: "5:45", horaFinal: "21:45", distanciaKm: 14, duracionMin: 50, mujerSegura: true, foto: "./data/023/023.png" },
-  "026": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 16, duracionMin: 55, mujerSegura: false, foto: "./data/026/026.png" },
-  "027": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 16, duracionMin: 55, mujerSegura: true, foto: "./data/026/026.png" },
-  "028": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 18, duracionMin: 60, mujerSegura: true, foto: "./data/028/028.png" },
-  "029": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 18, duracionMin: 60, mujerSegura: false, foto: "./data/028/028.png" },
-  "030": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 55, mujerSegura: false, foto: "./data/030/030.png" },
-  "031": { horaInicio: "7:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 55, mujerSegura: false, foto: "./data/030/030.png" },
-  "032": { horaInicio: "7:30", horaFinal: "21:45", distanciaKm: 24, duracionMin: 86, mujerSegura: false, foto: "./data/032/032.png" },
-  "033": { horaInicio: "7:30", horaFinal: "21:45", distanciaKm: 16, duracionMin: 55, mujerSegura: true, foto: "./data/032/032.png" },
-  "034": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 16, duracionMin: 55, mujerSegura: false, foto: "./data/032/032.png" },
-  "035": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 20, duracionMin: 70, mujerSegura: false, foto: "./data/035/035.png" },
-  "036": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 20, duracionMin:70, mujerSegura: false, foto: "./data/035/035.png" },
-  "037": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 15, duracionMin: 55, mujerSegura: false, foto: "./data/037/037.png" },
-  "038": { horaInicio: "6:30", horaFinal: "21:45", distanciaKm: 15, duracionMin: 55, mujerSegura: true, foto: "./data/037/037.png" },
-  "039": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 19, duracionMin: 65, mujerSegura: false, foto: "./data/039/039.png" },
-  "040": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 15, duracionMin: 55, mujerSegura: true, foto: "./data/039/039.png" },
-  "041": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 22, duracionMin: 75, mujerSegura: false, foto: "./data/041/041.png" },
-  "042": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 19, duracionMin: 65, mujerSegura: false, foto: "./data/041/041.png" },
-  "043": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 46, mujerSegura: false, foto: "./data/043/043.png" },
-  "044": { horaInicio: "7:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 46, mujerSegura: true, foto: "./data/043/043.png" },
-  "045": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 7.86, duracionMin: 35, mujerSegura: false, foto: "./data/045/045.png" },
-  "046": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 7.86, duracionMin: 35, mujerSegura: false, foto: "./data/045/045.png" },
-  "047": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.53, duracionMin: 40, mujerSegura: false, foto: "./data/047/047.png" },
-  "048": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 10, duracionMin: 40, mujerSegura: false, foto: "./data/047/047.png" },
-  "049": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6.86, duracionMin: 25, mujerSegura: true, foto: "./data/049/049.png" },
-  "050": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 7.79, duracionMin: 25, mujerSegura: true, foto: "./data/049/049.png" },
-  "051": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 16, duracionMin: 55, mujerSegura: false, foto: "./data/051/051.png" },
-  "052": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.68, duracionMin: 40, mujerSegura: false, foto: "./data/051/051.png" },
-  "053": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 27, duracionMin: 88, mujerSegura: true, foto: "./data/053/053.png" },
-  "054": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.45, duracionMin: 40, mujerSegura: false, foto: "./data/054/054.png" },
-  "055": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 7.98, duracionMin: 35, mujerSegura: true, foto: "./data/054/054.png" },
-  "056": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 8.4, duracionMin: 35, mujerSegura: false, foto: "./data/056/056.png" },
-  "057": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 8.85, duracionMin: 35, mujerSegura: true, foto: "./data/056/057.png"},
-  "058": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 60, mujerSegura: false, foto: "./data/058/058.png" },
-  "059": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 46, mujerSegura: false, foto: "./data/059/059.png" },
-  "060": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 7.09, duracionMin: 25, mujerSegura: false, foto: "./data/060/060.png" },
-  "061": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6.59, duracionMin: 20, mujerSegura: true, foto: "./data/060/060.png"},
-  "062": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.03, duracionMin: 35, mujerSegura: false, foto: "./data/062/062.png" },
-  "063": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 7.06, duracionMin: 30, mujerSegura: false, foto: "./data/062/062.png" },
-  "064": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 27, duracionMin: 90, mujerSegura: false, foto: "./data/064/064.png" },
-  "065": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 25, duracionMin: 86, mujerSegura: false, foto: "./data/064/064.png" },
-  "066": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 15, duracionMin: 55, mujerSegura: true, foto: "./data/066/066.png" },
-  "067": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 12, duracionMin: 46, mujerSegura: false, foto: "./data/066/066.png" },
-  "068": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6.86, duracionMin: 25, mujerSegura: false, foto: "./data/068/068.png" },
-  "069": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 10, duracionMin: 46, mujerSegura: false, foto: "./data/068/068.png" },
-  "070": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 14, duracionMin: 53, mujerSegura: false, foto: "./data/070/070.png" },
-  "071": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 15, duracionMin: 55, mujerSegura: true, foto: "./data/070/070.png" },
-  "072": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 14, duracionMin: 53, mujerSegura: false, foto: "./data/072/072.png" },
-  "073": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 18, duracionMin: 66, mujerSegura: false, foto: "./data/072/072.png" },
-  "074": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 8.04, duracionMin: 42, mujerSegura: true, foto: "./data/074/074.png" },
-  "075": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 46, mujerSegura: true, foto: "./data/074/074.png" },
-  "076": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 60, mujerSegura: true, foto: "./data/076/076.png" },
-  "077": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.86, duracionMin: 40, mujerSegura: false, foto: "./data/077/077.png" },
-
-  "078": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 12, duracionMin: 48, mujerSegura: true, foto: "./data/078/078.png" },
-  "079": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13, duracionMin: 52, mujerSegura: false, foto: "./data/079/079.png" },
-  "080": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 12,  duracionMin: 48, mujerSegura: false, foto: "./data/080/080.png" },
-  "081": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.21, duracionMin: 37, mujerSegura: true,  foto: "./data/081/081.png" },
-  "082": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 15, duracionMin: 60, mujerSegura: false, foto: "./data/082/082.png" },
-  "083": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 18, duracionMin: 72, mujerSegura: true, foto: "./data/083/083.png" },
-  "084": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 16, duracionMin: 64, mujerSegura: false, foto: "./data/084/084.png" },
-  "085": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 10, duracionMin: 40, mujerSegura: true,  foto: "./data/085/085.png" },
-  "086": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13, duracionMin: 52, mujerSegura: false, foto: "./data/086/086.png" },
-  "087": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6, duracionMin: 24, mujerSegura: false, foto: "./data/087/087.png" },
-  "088": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 5, duracionMin: 20, mujerSegura: false, foto: "./data/088/088.png" },
-  "089": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 5, duracionMin: 20, mujerSegura: true,  foto: "./data/089/089.png" },
-  "090": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6,  duracionMin: 24, mujerSegura: false, foto: "./data/088/088.png" },
-  "091": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6, duracionMin: 24, mujerSegura: false, foto: "./data/091/091.png" },
-  "092": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 3.72, duracionMin: 15, mujerSegura: false, foto: "./data/092/092.png" },
-  "093": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13.9, duracionMin: 51, mujerSegura: true, foto: "./data/091/091.png" },
-  "094": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 4.13, duracionMin: 17, mujerSegura: false, foto: "./data/091/091.png" },
-  "095": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.27, duracionMin: 41, mujerSegura: true,  foto: "./data/095/095.png" },
-  "096": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 8.56, duracionMin: 33, mujerSegura: false, foto: "./data/096/096.png" },
-  "097": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 44, mujerSegura: false, foto: "./data/097/097.png" },
-  "098": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 3.54, duracionMin: 14, mujerSegura: false, foto: "./data/098/098.png" },
-  "099": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9, duracionMin: 36, mujerSegura: false, foto: "./data/099/099.png" },
-  "100": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 19, duracionMin: 76, mujerSegura: true,  foto: "./data/100/100.png" },
-  "101": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 12, duracionMin: 48, mujerSegura: false, foto: "./data/101/101.png" },
-  "102": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 44, mujerSegura: true, foto: "./data/102/102.png" },
-  "103": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 10, duracionMin: 40, mujerSegura: false, foto: "./data/103/103.png" },
-  "104": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 26, duracionMin: 104, mujerSegura: true, foto: "./data/104/104.png" },
-  "105": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 7, duracionMin: 28, mujerSegura: false, foto: "./data/105/105.png" },
-  "106": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6, duracionMin: 24, mujerSegura: true,  foto: "./data/106/106.png" },
-  "107": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13, duracionMin: 52, mujerSegura: false, foto: "./data/107/107.png" },
-  "108": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 4, duracionMin: 16, mujerSegura: false, foto: "./data/108/108.png" },
-  "109": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 14, duracionMin: 56, mujerSegura: false, foto: "./data/109/109.png" },
-  "110": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13, duracionMin: 52, mujerSegura: false, foto: "./data/110/110.png" },
-  "111": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 12, duracionMin: 48, mujerSegura: true, foto: "./data/111/111.png" },
-  "112": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6.59, duracionMin: 28, mujerSegura: false, foto: "./data/111/111.png" },
-  "113": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6.44, duracionMin: 28, mujerSegura: false, foto: "./data/113/113.png" },
-  "114": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 28, duracionMin: 112, mujerSegura: false, foto: "./data/114/114.png" },
-  "115": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 19, duracionMin: 76, mujerSegura: true,  foto: "./data/115/115.png" },
-  "116": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 25, duracionMin: 100, mujerSegura: false, foto: "./data/114/114.png" },
-  "117": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 31, duracionMin: 124, mujerSegura: false, foto: "./data/117/117.png" },
-  "118": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 34, duracionMin: 136, mujerSegura: true, foto: "./data/117/117.png" },
-  "119": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 26, duracionMin: 104, mujerSegura: false, foto: "./data/119/119.png" },
-  "120": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 16, duracionMin: 64, mujerSegura: false, foto: "./data/120/120.png" },
-  "121": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 25, duracionMin: 100, mujerSegura: false, foto: "./data/121/121.png" },
-  "122": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 68, mujerSegura: true, foto: "./data/122/122.png" },
-  "123": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 24, duracionMin: 96, mujerSegura: false, foto: "./data/114/114.png" },
-  "124": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 19, duracionMin: 76, mujerSegura: false, foto: "./data/124/124.png" },
-  "125": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 18, duracionMin: 72, mujerSegura: false, foto: "./data/125/125.png" },
-  "126": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 24, duracionMin: 96, mujerSegura: true,  foto: "./data/126/126.png" },
-  "127": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 27, duracionMin: 108, mujerSegura: false, foto: "./data/127/127.png" },
-  "128": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13, duracionMin: 52, mujerSegura: false, foto: "./data/128/128.png" },
-  "129": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13, duracionMin: 52, mujerSegura: false, foto: "./data/129/129.png" },
-  "130": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 10, duracionMin: 40, mujerSegura: false, foto: "./data/128/128.png" },
-  "131": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 68, mujerSegura: true, foto: "./data/131/131.png" },
-  "132": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 19, duracionMin: 76, mujerSegura: false, foto: "./data/126/126.png" },
-  "133": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 24, duracionMin: 96, mujerSegura: false, foto: "./data/126/126.png" },
-  "134": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 30, duracionMin: 120, mujerSegura: false, foto: "./data/134/134.png" },
-  "135": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 68, mujerSegura: true, foto: "./data/135/135.png" },
-  "136": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 14, duracionMin: 56, mujerSegura: false, foto: "./data/136/136.png" },
-  "137": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 15, duracionMin: 60, mujerSegura: false, foto: "./data/136/136.png" },
-  "138": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 20, duracionMin: 80, mujerSegura: true,  foto: "./data/138/138.png" },
-  "139": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 20, duracionMin: 80, mujerSegura: false, foto: "./data/138/138.png" },
-  "140": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 29, duracionMin: 116, mujerSegura: false, foto: "./data/138/138.png" },
-  "141": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 27, duracionMin: 108, mujerSegura: true, foto: "./data/141/141.png" },
-  "142": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 21, duracionMin: 84, mujerSegura: false, foto: "./data/142/142.png" },
-  "143": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.7, duracionMin: 40, mujerSegura: false, foto: "./data/143/143.png" },
-  "144": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 18, duracionMin: 72, mujerSegura: false, foto: "./data/141/141.png" },
-  "145": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 18, duracionMin: 72, mujerSegura: false, foto: "./data/145/145.png" },
-  "146": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 22, duracionMin: 88, mujerSegura: true, foto: "./data/146/146.png" },
-  "147": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 16, duracionMin: 64, mujerSegura: false, foto: "./data/147/147.png" },
-  "148": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 22, duracionMin: 88, mujerSegura: false, foto: "./data/148/148.png" },
-  "149": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 68, mujerSegura: false, foto: "./data/148/148.png" },
-  "150": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 25, duracionMin: 100, mujerSegura: true,  foto: "./data/148/148.png" },
-  "151": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13, duracionMin: 52, mujerSegura: false, foto: "./data/151/151.png" },
-  "152": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 27, duracionMin: 108, mujerSegura: false, foto: "./data/152/152.png" },
-
-
-
+const RUTA_INFO = {
+    "001": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 37, duracionMin: 80, mujerSegura: false, foto: "./data/001/001.png" },
+    "002": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 25, duracionMin: 86, mujerSegura: true, foto: "./data/002/002.png" },
+    "003": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6.2, duracionMin: 25, mujerSegura: false, foto: "./data/003/003.png" },
+    "004": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6.2, duracionMin: 25, mujerSegura: false, foto: "./data/004/004.png" },
+    "005": { horaInicio: "6:30", horaFinal: "21:45", distanciaKm: 5.5, duracionMin: 25, mujerSegura: false, foto: "./data/005/005.png" },
+    "006": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 46, mujerSegura: false, foto: "./data/006/006.png" },
+    "007": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 12, duracionMin: 46, mujerSegura: false, foto: "./data/007/007.png" },
+    "008": { horaInicio: "5:00", horaFinal: "21:45", distanciaKm: 16, duracionMin: 55, mujerSegura: false, foto: "./data/008/008.png" },
+    "009": { horaInicio: "5:00", horaFinal: "21:45", distanciaKm: 12, duracionMin: 46, mujerSegura: false, foto: "./data/009/009.png" },
+    "010": { horaInicio: "5:40", horaFinal: "21:45", distanciaKm: 12, duracionMin: 46, mujerSegura: true, foto: "./data/010/010.png" },
+    "011": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 46, mujerSegura: false, foto: "./data/011/011.png" },
+    "012": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 46, mujerSegura: false, foto: "./data/012/012.png" },
+    "013": { horaInicio: "5:45", horaFinal: "21:45", distanciaKm: 10, duracionMin: 46, mujerSegura: true, foto: "./data/013/013.png" },
+    "014": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 10, duracionMin: 46, mujerSegura: false, foto: "./data/014/014.png" },
+    "015": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 27, duracionMin: 88, mujerSegura: false, foto: "./data/015/015.png" },
+    "016": { horaInicio: "6:00", horaFinal: "21:45", distanciaKm: 5.4, duracionMin: 25, mujerSegura: false, foto: "./data/016/016.png" },
+    "017": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 5.4, duracionMin: 25, mujerSegura: false, foto: "./data/017/017.png" },
+    "018": { horaInicio: "6:30", horaFinal: "21:45", distanciaKm: 10, duracionMin: 46, mujerSegura: false, foto: "./data/018/018.png" },
+    "019": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.8, duracionMin: 46, mujerSegura: false, foto: "./data/019/019.png" },
+    "020": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 26, duracionMin: 86, mujerSegura: false, foto: "./data/020/020.png" },
+    "021": { horaInicio: "7:30", horaFinal: "21:45", distanciaKm: 18, duracionMin: 60, mujerSegura: false, foto: "./data/021/021.png" },
+    "022": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 14, duracionMin: 50, mujerSegura: false, foto: "./data/022/022.png" },
+    "023": { horaInicio: "7:00", horaFinal: "21:45", distanciaKm: 14, duracionMin: 50, mujerSegura: true, foto: "./data/023/023.png" },
+    "024": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 14, duracionMin: 50, mujerSegura: false, foto: "./data/023/023.png" },
+    "025": { horaInicio: "5:45", horaFinal: "21:45", distanciaKm: 14, duracionMin: 50, mujerSegura: true, foto: "./data/023/023.png" },
+    "026": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 16, duracionMin: 55, mujerSegura: false, foto: "./data/026/026.png" },
+    "027": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 16, duracionMin: 55, mujerSegura: true, foto: "./data/026/026.png" },
+    "028": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 18, duracionMin: 60, mujerSegura: true, foto: "./data/028/028.png" },
+    "029": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 18, duracionMin: 60, mujerSegura: false, foto: "./data/028/028.png" },
+    "030": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 55, mujerSegura: false, foto: "./data/030/030.png" },
+    "031": { horaInicio: "7:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 55, mujerSegura: false, foto: "./data/030/030.png" },
+    "032": { horaInicio: "7:30", horaFinal: "21:45", distanciaKm: 24, duracionMin: 86, mujerSegura: false, foto: "./data/032/032.png" },
+    "033": { horaInicio: "7:30", horaFinal: "21:45", distanciaKm: 16, duracionMin: 55, mujerSegura: true, foto: "./data/032/032.png" },
+    "034": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 16, duracionMin: 55, mujerSegura: false, foto: "./data/032/032.png" },
+    "035": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 20, duracionMin: 70, mujerSegura: false, foto: "./data/035/035.png" },
+    "036": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 20, duracionMin: 70, mujerSegura: false, foto: "./data/035/035.png" },
+    "037": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 15, duracionMin: 55, mujerSegura: false, foto: "./data/037/037.png" },
+    "038": { horaInicio: "6:30", horaFinal: "21:45", distanciaKm: 15, duracionMin: 55, mujerSegura: true, foto: "./data/037/037.png" },
+    "039": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 19, duracionMin: 65, mujerSegura: false, foto: "./data/039/039.png" },
+    "040": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 15, duracionMin: 55, mujerSegura: true, foto: "./data/039/039.png" },
+    "041": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 22, duracionMin: 75, mujerSegura: false, foto: "./data/041/041.png" },
+    "042": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 19, duracionMin: 65, mujerSegura: false, foto: "./data/041/041.png" },
+    "043": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 46, mujerSegura: false, foto: "./data/043/043.png" },
+    "044": { horaInicio: "7:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 46, mujerSegura: true, foto: "./data/043/043.png" },
+    "045": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 7.86, duracionMin: 35, mujerSegura: false, foto: "./data/045/045.png" },
+    "046": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 7.86, duracionMin: 35, mujerSegura: false, foto: "./data/045/045.png" },
+    "047": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.53, duracionMin: 40, mujerSegura: false, foto: "./data/047/047.png" },
+    "048": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 10, duracionMin: 40, mujerSegura: false, foto: "./data/047/047.png" },
+    "049": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6.86, duracionMin: 25, mujerSegura: true, foto: "./data/049/049.png" },
+    "050": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 7.79, duracionMin: 25, mujerSegura: true, foto: "./data/049/049.png" },
+    "051": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 16, duracionMin: 55, mujerSegura: false, foto: "./data/051/051.png" },
+    "052": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.68, duracionMin: 40, mujerSegura: false, foto: "./data/051/051.png" },
+    "053": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 27, duracionMin: 88, mujerSegura: true, foto: "./data/053/053.png" },
+    "054": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.45, duracionMin: 40, mujerSegura: false, foto: "./data/054/054.png" },
+    "055": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 7.98, duracionMin: 35, mujerSegura: true, foto: "./data/054/054.png" },
+    "056": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 8.4, duracionMin: 35, mujerSegura: false, foto: "./data/056/056.png" },
+    "057": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 8.85, duracionMin: 35, mujerSegura: true, foto: "./data/056/057.png" },
+    "058": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 60, mujerSegura: false, foto: "./data/058/058.png" },
+    "059": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 46, mujerSegura: false, foto: "./data/059/059.png" },
+    "060": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 7.09, duracionMin: 25, mujerSegura: false, foto: "./data/060/060.png" },
+    "061": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6.59, duracionMin: 20, mujerSegura: true, foto: "./data/060/060.png" },
+    "062": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.03, duracionMin: 35, mujerSegura: false, foto: "./data/062/062.png" },
+    "063": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 7.06, duracionMin: 30, mujerSegura: false, foto: "./data/062/062.png" },
+    "064": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 27, duracionMin: 90, mujerSegura: false, foto: "./data/064/064.png" },
+    "065": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 25, duracionMin: 86, mujerSegura: false, foto: "./data/064/064.png" },
+    "066": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 15, duracionMin: 55, mujerSegura: true, foto: "./data/066/066.png" },
+    "067": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 12, duracionMin: 46, mujerSegura: false, foto: "./data/066/066.png" },
+    "068": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6.86, duracionMin: 25, mujerSegura: false, foto: "./data/068/068.png" },
+    "069": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 10, duracionMin: 46, mujerSegura: false, foto: "./data/068/068.png" },
+    "070": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 14, duracionMin: 53, mujerSegura: false, foto: "./data/070/070.png" },
+    "071": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 15, duracionMin: 55, mujerSegura: true, foto: "./data/070/070.png" },
+    "072": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 14, duracionMin: 53, mujerSegura: false, foto: "./data/072/072.png" },
+    "073": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 18, duracionMin: 66, mujerSegura: false, foto: "./data/072/072.png" },
+    "074": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 8.04, duracionMin: 42, mujerSegura: true, foto: "./data/074/074.png" },
+    "075": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 46, mujerSegura: true, foto: "./data/074/074.png" },
+    "076": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 60, mujerSegura: true, foto: "./data/076/076.png" },
+    "077": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.86, duracionMin: 40, mujerSegura: false, foto: "./data/077/077.png" },
+    "078": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 12, duracionMin: 48, mujerSegura: true, foto: "./data/078/078.png" },
+    "079": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13, duracionMin: 52, mujerSegura: false, foto: "./data/079/079.png" },
+    "080": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 12, duracionMin: 48, mujerSegura: false, foto: "./data/080/080.png" },
+    "081": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.21, duracionMin: 37, mujerSegura: true, foto: "./data/081/081.png" },
+    "082": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 15, duracionMin: 60, mujerSegura: false, foto: "./data/082/082.png" },
+    "083": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 18, duracionMin: 72, mujerSegura: true, foto: "./data/083/083.png" },
+    "084": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 16, duracionMin: 64, mujerSegura: false, foto: "./data/084/084.png" },
+    "085": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 10, duracionMin: 40, mujerSegura: true, foto: "./data/085/085.png" },
+    "086": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13, duracionMin: 52, mujerSegura: false, foto: "./data/086/086.png" },
+    "087": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6, duracionMin: 24, mujerSegura: false, foto: "./data/087/087.png" },
+    "088": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 5, duracionMin: 20, mujerSegura: false, foto: "./data/088/088.png" },
+    "089": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 5, duracionMin: 20, mujerSegura: true, foto: "./data/089/089.png" },
+    "090": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6, duracionMin: 24, mujerSegura: false, foto: "./data/088/088.png" },
+    "091": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6, duracionMin: 24, mujerSegura: false, foto: "./data/091/091.png" },
+    "092": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 3.72, duracionMin: 15, mujerSegura: false, foto: "./data/092/092.png" },
+    "093": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13.9, duracionMin: 51, mujerSegura: true, foto: "./data/091/091.png" },
+    "094": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 4.13, duracionMin: 17, mujerSegura: false, foto: "./data/091/091.png" },
+    "095": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.27, duracionMin: 41, mujerSegura: true, foto: "./data/095/095.png" },
+    "096": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 8.56, duracionMin: 33, mujerSegura: false, foto: "./data/096/096.png" },
+    "097": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 44, mujerSegura: false, foto: "./data/097/097.png" },
+    "098": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 3.54, duracionMin: 14, mujerSegura: false, foto: "./data/098/098.png" },
+    "099": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9, duracionMin: 36, mujerSegura: false, foto: "./data/099/099.png" },
+    "100": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 19, duracionMin: 76, mujerSegura: true, foto: "./data/100/100.png" },
+    "101": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 12, duracionMin: 48, mujerSegura: false, foto: "./data/101/101.png" },
+    "102": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 11, duracionMin: 44, mujerSegura: true, foto: "./data/102/102.png" },
+    "103": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 10, duracionMin: 40, mujerSegura: false, foto: "./data/103/103.png" },
+    "104": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 26, duracionMin: 104, mujerSegura: true, foto: "./data/104/104.png" },
+    "105": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 7, duracionMin: 28, mujerSegura: false, foto: "./data/105/105.png" },
+    "106": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6, duracionMin: 24, mujerSegura: true, foto: "./data/106/106.png" },
+    "107": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13, duracionMin: 52, mujerSegura: false, foto: "./data/107/107.png" },
+    "108": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 4, duracionMin: 16, mujerSegura: false, foto: "./data/108/108.png" },
+    "109": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 14, duracionMin: 56, mujerSegura: false, foto: "./data/109/109.png" },
+    "110": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13, duracionMin: 52, mujerSegura: false, foto: "./data/110/110.png" },
+    "111": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 12, duracionMin: 48, mujerSegura: true, foto: "./data/111/111.png" },
+    "112": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6.59, duracionMin: 28, mujerSegura: false, foto: "./data/111/111.png" },
+    "113": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 6.44, duracionMin: 28, mujerSegura: false, foto: "./data/113/113.png" },
+    "114": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 28, duracionMin: 112, mujerSegura: false, foto: "./data/114/114.png" },
+    "115": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 19, duracionMin: 76, mujerSegura: true, foto: "./data/115/115.png" },
+    "116": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 25, duracionMin: 100, mujerSegura: false, foto: "./data/114/114.png" },
+    "117": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 31, duracionMin: 124, mujerSegura: false, foto: "./data/117/117.png" },
+    "118": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 34, duracionMin: 136, mujerSegura: true, foto: "./data/117/117.png" },
+    "119": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 26, duracionMin: 104, mujerSegura: false, foto: "./data/119/119.png" },
+    "120": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 16, duracionMin: 64, mujerSegura: false, foto: "./data/120/120.png" },
+    "121": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 25, duracionMin: 100, mujerSegura: false, foto: "./data/121/121.png" },
+    "122": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 68, mujerSegura: true, foto: "./data/122/122.png" },
+    "123": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 24, duracionMin: 96, mujerSegura: false, foto: "./data/114/114.png" },
+    "124": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 19, duracionMin: 76, mujerSegura: false, foto: "./data/124/124.png" },
+    "125": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 18, duracionMin: 72, mujerSegura: false, foto: "./data/125/125.png" },
+    "126": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 24, duracionMin: 96, mujerSegura: true, foto: "./data/126/126.png" },
+    "127": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 27, duracionMin: 108, mujerSegura: false, foto: "./data/127/127.png" },
+    "128": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13, duracionMin: 52, mujerSegura: false, foto: "./data/128/128.png" },
+    "129": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13, duracionMin: 52, mujerSegura: false, foto: "./data/129/129.png" },
+    "130": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 10, duracionMin: 40, mujerSegura: false, foto: "./data/128/128.png" },
+    "131": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 68, mujerSegura: true, foto: "./data/131/131.png" },
+    "132": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 19, duracionMin: 76, mujerSegura: false, foto: "./data/126/126.png" },
+    "133": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 24, duracionMin: 96, mujerSegura: false, foto: "./data/126/126.png" },
+    "134": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 30, duracionMin: 120, mujerSegura: false, foto: "./data/134/134.png" },
+    "135": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 68, mujerSegura: true, foto: "./data/135/135.png" },
+    "136": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 14, duracionMin: 56, mujerSegura: false, foto: "./data/136/136.png" },
+    "137": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 15, duracionMin: 60, mujerSegura: false, foto: "./data/136/136.png" },
+    "138": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 20, duracionMin: 80, mujerSegura: true, foto: "./data/138/138.png" },
+    "139": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 20, duracionMin: 80, mujerSegura: false, foto: "./data/138/138.png" },
+    "140": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 29, duracionMin: 116, mujerSegura: false, foto: "./data/138/138.png" },
+    "141": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 27, duracionMin: 108, mujerSegura: true, foto: "./data/141/141.png" },
+    "142": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 21, duracionMin: 84, mujerSegura: false, foto: "./data/142/142.png" },
+    "143": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 9.7, duracionMin: 40, mujerSegura: false, foto: "./data/143/143.png" },
+    "144": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 18, duracionMin: 72, mujerSegura: false, foto: "./data/141/141.png" },
+    "145": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 18, duracionMin: 72, mujerSegura: false, foto: "./data/145/145.png" },
+    "146": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 22, duracionMin: 88, mujerSegura: true, foto: "./data/146/146.png" },
+    "147": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 16, duracionMin: 64, mujerSegura: false, foto: "./data/147/147.png" },
+    "148": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 22, duracionMin: 88, mujerSegura: false, foto: "./data/148/148.png" },
+    "149": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 17, duracionMin: 68, mujerSegura: false, foto: "./data/148/148.png" },
+    "150": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 25, duracionMin: 100, mujerSegura: true, foto: "./data/148/148.png" },
+    "151": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 13, duracionMin: 52, mujerSegura: false, foto: "./data/151/151.png" },
+    "152": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 27, duracionMin: 108, mujerSegura: false, foto: "./data/152/152.png" },
 };
+
+
+
+// RUTABUS - app.js (Parte 1)
+// Correcciones clave: llaves y comas correctas, sin duplicados fuera de App, renderTraffic() arreglado.
+// Cada función incluye una nota breve de lo que hace.
 
 const App = {
   // --- Propiedades y Estado ---
+  // Nota: variables principales del estado de la app (mapa, capas activas, ubicación de usuario, etc.)
   map: null,
   activeLayers: {},
   userLocation: null,
@@ -324,242 +326,174 @@ const App = {
   userLocationMarker: null,
   activeRoute: null,
   selectionDefaults: { start: null, end: null, segmentLayer: null },
+  dbRoutes: [],
   watchId: null,
   accuracyCircle: null,
   followUser: true,
   lastUserLatLng: null,
-
-  // cache opcional para latlngs por ruta
   routePathCache: {},
-
   settings: {
     nearbyRadiusKm: 0.3,
     showAccuracyCircle: false
   },
-
-  pickOnMap: {
-    active: false,
-    marker: null,
-    clickHandler: null
-  },
-
   proximityCircle: null,
 
-  elements: {
-    rutasLista: document.getElementById('rutasLista'),
-    buscador: document.getElementById('buscadorRutas'),
-    sinResultados: document.getElementById('sinResultados'),
-    guestButtons: document.getElementById('guest-buttons'),
-    userButtons: document.getElementById('user-buttons'),
-    logoutBtn: document.getElementById('logout-btn'),
-    sidebar: document.querySelector('.sidebar'),
-    toggleSidebarBtn: document.getElementById('toggleSidebarBtn'),
-    toggleRoutesBtn: document.getElementById('toggleRoutesBtn'),
-    locationBtn: document.getElementById('locationBtn'),
-    userDisplayName: document.getElementById('user-display-name'),
-    guestLegend: document.getElementById('guest-legend'),
-    reportTrafficBtn: document.getElementById('reportTrafficBtn')
-  },
+  // --- CORRECCIÓN: elementos del DOM inicializados vacíos y luego vinculados en bindElements() ---
+  elements: {},
 
+  // --- Íconos ---
+  // Nota: define los íconos usados por Leaflet (paradas, ubicación, bus, etc.)
   icons: {
     parada: L.icon({
       iconUrl: "https://api.iconify.design/mdi/bus-stop.svg?color=%230d6efd",
-      iconSize: [22, 22],
-      iconAnchor: [11, 11],
-      popupAnchor: [0, -12]
+      iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -12]
     }),
     paradaStart: L.icon({
       iconUrl: "https://api.iconify.design/mdi/bus-stop.svg?color=%2300a65a",
-      iconSize: [22, 22],
-      iconAnchor: [11, 11],
-      popupAnchor: [0, -12]
+      iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -12]
     }),
     paradaEnd: L.icon({
       iconUrl: "https://api.iconify.design/mdi/bus-stop.svg?color=%23e11d48",
-      iconSize: [22, 22],
-      iconAnchor: [11, 11],
-      popupAnchor: [0, -12]
+      iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -12]
     }),
     ubicacion: L.icon({
       iconUrl: 'https://api.iconify.design/material-symbols/my-location.svg?color=%230d6efd',
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
+      iconSize: [32, 32], iconAnchor: [16, 16]
     }),
     bus: L.icon({
       iconUrl: "https://api.iconify.design/mdi/bus.svg?color=%23000000",
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
+      iconSize: [32, 32], iconAnchor: [16, 16]
     }),
   },
 
-  // --- Métodos de Inicialización ---
+  // --- Vinculación de elementos del DOM ---
+  // Nota: busca y guarda referencias a los elementos HTML que la app usa.
+  bindElements() {
+    this.elements = {
+      rutasLista: document.getElementById('rutasLista'),
+      buscador: document.getElementById('buscadorRutas'),
+      sinResultados: document.getElementById('sinResultados'),
+      guestButtons: document.getElementById('guest-buttons'),
+      userButtons: document.getElementById('user-buttons'),
+      logoutBtn: document.getElementById('logout-btn'),
+      sidebar: document.querySelector('.sidebar'),
+      toggleSidebarBtn: document.getElementById('toggleSidebarBtn'),
+      toggleRoutesBtn: document.getElementById('toggleRoutesBtn'),
+      locationBtn: document.getElementById('locationBtn'),
+      userDisplayName: document.getElementById('user-display-name'),
+      adminPanelBtn: document.getElementById('admin-panel-btn'),
+      guestLegend: document.getElementById('guest-legend'),
+      reportTrafficBtn: document.getElementById('reportTrafficBtn'),
+      toggleTrafficBtn: document.getElementById('toggleTrafficBtn'),
+      // Opcionales: si existen en el HTML, quedarán disponibles; si no, no truenan por el uso de ?.
+      menuIcon: document.getElementById('menuIcon'),
+      adminMenu: document.getElementById('adminMenu'),
+      addRouteBtn: document.getElementById('addRouteBtn'),
+      trafficList: document.getElementById('trafficList'),
+    };
+  },
+
+  // --- Inicialización ---
+  // Nota: prepara la app; crea el mapa, vincula UI, descarga datos de rutas y habilita botones.
   async init() {
+    this.bindElements(); // primero vinculamos el DOM
     this.initMap();
     this.updateAuthUI();
     this.setupEventListeners();
     await this.fetchAllRouteData();
     this.renderRouteList();
-    this.updateToggleButtonText();
-    this.elements.toggleRoutesBtn.disabled = false;
+    // Habilita el botón tras cargar
+    if (this.elements.toggleRoutesBtn) {
+      this.elements.toggleRoutesBtn.disabled = false;
+      this.updateToggleButtonText();
+    }
   },
 
+  // --- Crear mapa y capa de tráfico ---
+  // Nota: crea el mapa, define listeners de zoom/drag, y prepara contenedores de tráfico.
   initMap() {
     this.map = L.map("map").setView([19.5438, -96.9103], 13);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
     }).addTo(this.map);
-    this.map.on('dragstart zoomstart', () => { this.followUser = false; });
 
+    this.map.on('dragstart zoomstart', () => { this.followUser = false; });
     this.map.on('zoomend', () => {
       if (this.proximityCircle && this.userLocation) {
         this.proximityCircle.setRadius(this.getCurrentNearbyRadiusKm() * 1000);
       }
     });
 
-    // TRAFFIC
+    // Capa y lista de tráfico
     this.traffic.layer = L.layerGroup().addTo(this.map);
-    this.traffic.listContainer = document.getElementById('trafficList');
+    this.traffic.listContainer = this.elements.trafficList;
 
-        // --- REPORT TRAFFIC UI ---
-    this.$reportBtn      = document.getElementById('reportTrafficBtn');
-    this.$trafficModalEl = document.getElementById('trafficModal');
-    this.$trafficForm    = document.getElementById('trafficForm');
-    this.$cancelPickBtn  = document.getElementById('cancelPickBtn');
-    this._trafficModal   = this.$trafficModalEl ? new bootstrap.Modal(this.$trafficModalEl) : null;
-
-    // Click: Reportar tráfico (gated)
-    this.$reportBtn?.addEventListener('click', () => {
-      if (!this.isAuthenticated()) return this._nudgeGuest('Reportar tráfico');
-      this.startTrafficReport();
-    });
-
-    // Cambios en el modal
-    this.$trafficForm?.addEventListener('submit', (e) => this.submitTrafficReport(e));
-    this.$trafficForm?.querySelectorAll('input[name="locMode"]')
-      .forEach(inp => inp.addEventListener('change', (e) => this._onLocModeChange(e)));
-    this.$cancelPickBtn?.addEventListener('click', () => this._stopPickOnMap());
-
-    // Click: Ver alertas (gated)
-    this.$toggleTrafficBtn = document.getElementById('toggleTrafficBtn');
-    this.$toggleTrafficBtn?.addEventListener('click', async () => {
+    // Botón para ver alertas de tráfico
+    this.elements.toggleTrafficBtn?.addEventListener('click', async () => {
       if (!this.isAuthenticated()) return this._nudgeGuest('Ver alertas de tráfico');
       await this.fetchTrafficAlerts();
       this.renderTraffic();
       this.renderTrafficList();
     });
-
-    // Click: Mi ubicación (gated)
-    this.$locationBtn = document.getElementById('locationBtn');
-    this.$locationBtn?.addEventListener('click', () => {
-      if (!this.isAuthenticated()) return this._nudgeGuest('Seguir mi ubicación');
-      this.toggleFollowUser(); // o el método que ya usas para iniciar watchPosition
-    });
-
-
   },
 
-  
-
-  
-
-  // --- Lógica de Carga de Datos y Ubicación ---
+  // --- Carga de datos (local + BD) ---
+  // Nota: descarga y combina rutas locales (carpeta /data) y rutas desde la API /api/rutas.
   async fetchAllRouteData() {
-    this.elements.toggleRoutesBtn.textContent = 'Cargando datos de rutas...';
-    
-    try {
-      // Cargar rutas de la base de datos y rutas locales en paralelo
-      const dbPromise = fetch('/api/routes');
-      const localPromise = fetch('/api/routes/local');
-      
-      const [dbResponse, localResponse] = await Promise.all([dbPromise, localPromise]);
-      
-      const dbResult = dbResponse.ok ? await dbResponse.json() : { success: false, routes: [] };
-      const localResult = localResponse.ok ? await localResponse.json() : { success: false, routes: [] };
-      
-      // Combinar rutas de ambas fuentes
-      let allRoutes = [];
-      
-      // Agregar rutas de base de datos
-      if (dbResult.success && dbResult.routes.length > 0) {
-        const dbRoutes = dbResult.routes.map(route => ({
-          id: route.id,
-          stop: route.stop,
-          name: route.name,
-          geojson: route.routeData || null,
-          stopsData: route.stopsData || null,
-          routeInfo: route.routeInfo || {},
-          source: 'database'
-        }));
-        allRoutes = allRoutes.concat(dbRoutes);
-        
-        // Actualizar RUTA_INFO con datos de la base de datos
-        dbResult.routes.forEach(route => {
-          if (route.routeInfo) {
-            RUTA_INFO[route.id] = route.routeInfo;
-          }
-        });
-      }
-      
-      // Agregar rutas locales
-      if (localResult.success && localResult.routes.length > 0) {
-        const localRoutes = localResult.routes.map(route => ({
-          id: route.id,
-          stop: route.stop,
-          name: route.name,
-          geojson: route.routeData || null,
-          stopsData: route.stopsData || null,
-          routeInfo: route.routeInfo || {},
-          source: 'local'
-        }));
-        allRoutes = allRoutes.concat(localRoutes);
-        
-        // Actualizar RUTA_INFO con datos locales
-        localResult.routes.forEach(route => {
-          if (route.routeInfo) {
-            RUTA_INFO[route.id] = route.routeInfo;
-          }
-        });
-      }
-      
-      if (allRoutes.length > 0) {
-        // Ordenar por ID para mejor organización
-        allRoutes.sort((a, b) => a.id.localeCompare(b.id));
-        this.routeData = allRoutes;
-        
-        const dbCount = dbResult.success ? dbResult.routes.length : 0;
-        const localCount = localResult.success ? localResult.routes.length : 0;
-        console.log(`Cargadas ${allRoutes.length} rutas: ${dbCount} de BD, ${localCount} locales`);
-        return;
-      }
-      
-      // Si no hay datos en ninguna fuente, usar datos estáticos como fallback
-      console.log('No hay rutas en BD ni locales, usando datos estáticos');
-      const promises = RUTAS.map(rutaInfo =>
-        this.fetchGeoJSON(`./data/${rutaInfo.id}/route.json`)
-          .then(geojson => ({ ...rutaInfo, geojson, source: 'static' }))
-      );
-      this.routeData = await Promise.all(promises);
-      
-    } catch (error) {
-      console.error('Error cargando rutas, usando datos estáticos:', error);
-      // Fallback a datos estáticos
-      const promises = RUTAS.map(rutaInfo =>
-        this.fetchGeoJSON(`./data/${rutaInfo.id}/route.json`)
-          .then(geojson => ({ ...rutaInfo, geojson, source: 'static' }))
-      );
-      this.routeData = await Promise.all(promises);
+    if (this.elements.toggleRoutesBtn) {
+      this.elements.toggleRoutesBtn.textContent = 'Cargando datos de rutas...';
+    }
+
+    // 1) Rutas locales según tu arreglo RUTAS
+    const localPromises = (RUTAS || []).map(rutaInfo =>
+      this.fetchGeoJSON(`./data/${rutaInfo.id}/route.json`)
+        .then(geojson => ({ ...rutaInfo, geojson, local: true }))
+    );
+
+    // 2) Rutas desde la base de datos
+    let dbRoutesPromise = fetch('/api/rutas')
+      .then(response => response.json())
+      .then(data => {
+        if (data.success && data.rutas) {
+          return data.rutas.map(ruta => ({
+            id: ruta.id,
+            stop: ruta.stop,
+            name: ruta.nombre,
+            geojson: ruta.ruta,
+            dbParadas: ruta.paradas,
+            local: false
+          }));
+        }
+        return [];
+      })
+      .catch(error => {
+        console.error('Error al cargar rutas de la base de datos:', error);
+        return [];
+      });
+
+    // 3) Combinar
+    const [localRoutes, dbRoutes] = await Promise.all([
+      Promise.all(localPromises),
+      dbRoutesPromise
+    ]);
+
+    this.routeData = [...localRoutes, ...dbRoutes].sort((a, b) => a.id.localeCompare(b.id));
+
+    if (this.elements.toggleRoutesBtn) {
+      this.updateToggleButtonText();
     }
   },
 
+  // --- Obtener ubicación actual (una sola vez) ---
+  // Nota: pide geolocalización una sola vez; coloca un marcador y centra el mapa.
   getUserLocation() {
     if (!this.isAuthenticated()) { this._nudgeGuest('Mi ubicación'); return Promise.reject(); }
-
     const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
+
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
         alert("La geolocalización no es compatible con tu navegador.");
-        reject(new Error("Geolocation not supported"));
-        return;
+        return reject(new Error("Geolocation not supported"));
       }
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -582,14 +516,18 @@ const App = {
     });
   },
 
+  // --- Seguir ubicación en vivo ---
+  // Nota: alterna entre seguir/no seguir la ubicación en tiempo real (watchPosition/clearWatch).
   async toggleUserLocation() {
     if (!this.isAuthenticated()) return this._nudgeGuest('Mi ubicación');
     this.isLocationActive = !this.isLocationActive;
-    this.elements.locationBtn.classList.toggle('active', this.isLocationActive);
-    this.elements.locationBtn.setAttribute('aria-pressed', this.isLocationActive ? 'true' : 'false');
-    this.elements.locationBtn.title = this.isLocationActive
-      ? 'Dejar de seguir mi ubicación'
-      : 'Seguir mi ubicación en tiempo real';
+    this.elements.locationBtn?.classList.toggle('active', this.isLocationActive);
+    this.elements.locationBtn?.setAttribute('aria-pressed', this.isLocationActive ? 'true' : 'false');
+    if (this.elements.locationBtn) {
+      this.elements.locationBtn.title = this.isLocationActive ?
+        'Dejar de seguir mi ubicación' :
+        'Seguir mi ubicación en tiempo real';
+    }
 
     if (this.isLocationActive) {
       this.followUser = true;
@@ -603,12 +541,14 @@ const App = {
     this.renderRouteList();
   },
 
+  // --- Iniciar seguimiento en vivo ---
+  // Nota: usa watchPosition para actualizar círculo/marker y re-render de rutas cercanas.
   startLiveLocation() {
     if (!navigator.geolocation) {
       alert('La geolocalización no es compatible con tu navegador.');
       this.isLocationActive = false;
-      this.elements.locationBtn.classList.remove('active');
-      this.elements.locationBtn.setAttribute('aria-pressed', 'false');
+      this.elements.locationBtn?.classList.remove('active');
+      this.elements.locationBtn?.setAttribute('aria-pressed', 'false');
       return;
     }
     const opts = { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 };
@@ -619,6 +559,8 @@ const App = {
     );
   },
 
+  // --- Detener seguimiento en vivo ---
+  // Nota: limpia watchPosition, marcador, círculos y estado relacionados a la ubicación.
   stopLiveLocation() {
     if (this.watchId !== null) {
       navigator.geolocation.clearWatch(this.watchId);
@@ -640,6 +582,8 @@ const App = {
     this.lastUserLatLng = null;
   },
 
+  // --- Callback de ubicación exitosa ---
+  // Nota: actualiza marcador, círculo de proximidad y centra el mapa si followUser está activo.
   _onLocationSuccess(position) {
     const { latitude, longitude, accuracy } = position.coords;
     this.userLocation = { lat: latitude, lon: longitude, accuracy };
@@ -680,36 +624,34 @@ const App = {
     } else {
       this.lastUserLatLng = nowLL;
     }
-    this.renderTraffic();
-    this.renderTrafficList();
-
   },
 
+  // --- Callback de error de ubicación ---
+  // Nota: informa el error, apaga seguimiento y restaura UI.
   _onLocationError(err) {
     console.warn('[RUTABUS] Geolocalización falló:', err);
-    const msg = err?.code === 1
-      ? 'Permite el acceso a la ubicación para poder mostrarte en el mapa.'
-      : 'No se pudo obtener tu ubicación. Inténtalo de nuevo.';
+    const msg = err?.code === 1 ?
+      'Permite el acceso a la ubicación para poder mostrarte en el mapa.' :
+      'No se pudo obtener tu ubicación. Inténtalo de nuevo.';
     alert(msg);
-
     this.isLocationActive = false;
-    this.elements.locationBtn.classList.remove('active');
-    this.elements.locationBtn.setAttribute('aria-pressed', 'false');
-    this.elements.locationBtn.title = 'Seguir mi ubicación en tiempo real';
-
+    this.elements.locationBtn?.classList.remove('active');
+    this.elements.locationBtn?.setAttribute('aria-pressed', 'false');
+    if (this.elements.locationBtn) this.elements.locationBtn.title = 'Seguir mi ubicación en tiempo real';
     this.stopLiveLocation();
     this.isShowingAll = true;
     this.updateToggleButtonText();
     this.renderRouteList();
   },
 
-  // --- Renderizado y Lógica de UI ---
+  // --- Render de lista de rutas ---
+  // Nota: filtra por búsqueda y/o cercanía y pinta la lista de rutas interactiva.
   renderRouteList() {
-    const query = this.elements.buscador.value;
+    const query = this.elements.buscador?.value || '';
     const normalizedQuery = this.normalizeString(query);
-    this.elements.rutasLista.innerHTML = '';
-    const fragment = document.createDocumentFragment();
+    if (this.elements.rutasLista) this.elements.rutasLista.innerHTML = '';
 
+    const fragment = document.createDocumentFragment();
     const radiusInKm = this.getCurrentNearbyRadiusKm();
 
     let baseRoutes = this.routeData;
@@ -724,7 +666,7 @@ const App = {
       return normalizedText.includes(normalizedQuery);
     });
 
-    if (routesToShow.length === 0) {
+    if (!routesToShow.length) {
       const li = document.createElement('li');
       li.className = 'list-group-item text-muted';
       if (query) {
@@ -739,74 +681,40 @@ const App = {
       for (const ruta of routesToShow) {
         const li = document.createElement('li');
         li.className = 'list-group-item';
-        
-        // Agregar clase para distinguir fuentes
-        if (ruta.source === 'local') {
-          li.classList.add('route-local-item');
-        } else if (ruta.source === 'database') {
-          li.classList.add('route-database-item');
-        }
 
         const button = document.createElement('button');
         button.className = 'btn btn-link ruta-btn';
         button.dataset.ruta = ruta.id;
         button.dataset.stop = ruta.stop;
-        
-        // Crear contenido del botón con indicador de fuente
-        const routeName = document.createElement('span');
-        routeName.textContent = ruta.name;
-        
-        const sourceIndicator = document.createElement('span');
-        sourceIndicator.className = 'badge ms-2';
-        if (ruta.source === 'local') {
-          sourceIndicator.className += ' badge-info';
-          sourceIndicator.textContent = 'Local';
-          sourceIndicator.style.backgroundColor = '#17a2b8';
-          sourceIndicator.style.color = 'white';
-          sourceIndicator.style.fontSize = '0.7rem';
-        } else if (ruta.source === 'database') {
-          sourceIndicator.className += ' badge-success';
-          sourceIndicator.textContent = 'BD';
-          sourceIndicator.style.backgroundColor = '#28a745';
-          sourceIndicator.style.color = 'white';
-          sourceIndicator.style.fontSize = '0.7rem';
-        }
-        
-        button.appendChild(routeName);
-        if (ruta.source && ruta.source !== 'static') {
-          button.appendChild(sourceIndicator);
-        }
+        button.textContent = ruta.name;
 
         if (this.activeLayers[ruta.id]) {
           button.classList.add('active');
           li.classList.add('active');
         }
 
-        const info = RUTA_INFO[ruta.id];
+        const info = (typeof RUTA_INFO !== 'undefined') ? RUTA_INFO[ruta.id] : null;
         const detalle = document.createElement('div');
         detalle.className = 'route-details';
+
         if (info) {
           detalle.innerHTML = `
             <div class="meta">
-              <div><strong>Distancia de la ruta:</strong> ${info.distanciaKm} km</div>
-              <div><strong>Tiempo en completarse:</strong> ${info.duracionMin} min</div>
-              <div><strong>Hora de Inicio:</strong> ${info.horaInicio} </div>
-              <div><strong>Hora de Finalización:</strong> ${info.horaFinal} </div>
+              <div><strong>Distancia:</strong> ${info.distanciaKm} km</div>
+              <div><strong>Duración:</strong> ${info.duracionMin} min</div>
+              <div><strong>Inicio:</strong> ${info.horaInicio}</div>
+              <div><strong>Fin:</strong> ${info.horaFinal}</div>
               <div>
-                <strong>¿Versión "Mujer segura"?:</strong>
+                <strong>Mujer Segura:</strong>
                 <span class="badge ${info.mujerSegura ? 'bg-success' : 'bg-secondary'}">
                   ${info.mujerSegura ? 'Sí' : 'No'}
                 </span>
               </div>
             </div>
-            ${info.foto ? `<img src="${info.foto}" alt="Autobús ruta ${ruta.id}">` : ``}
+            ${info.foto ? `<img src="${info.foto}" alt="Autobús ruta ${ruta.id}">` : ''}
           `;
         } else {
-          detalle.innerHTML = `
-            <div class="meta">
-              <div class="text-muted">Información no disponible para esta ruta.</div>
-            </div>
-          `;
+          detalle.innerHTML = `<div class="meta"><div class="text-muted">Información no disponible.</div></div>`;
         }
 
         li.appendChild(button);
@@ -814,24 +722,29 @@ const App = {
         fragment.appendChild(li);
       }
     }
-    this.elements.rutasLista.appendChild(fragment);
+
+    this.elements.rutasLista?.appendChild(fragment);
   },
 
+  // --- Texto del botón alternar cercanas/todas ---
+  // Nota: ajusta el texto del botón según el estado de filtros (cercanas vs todas).
   updateToggleButtonText() {
+    if (!this.elements.toggleRoutesBtn) return;
     if (!navigator.geolocation) {
       this.elements.toggleRoutesBtn.textContent = 'Ubicación no disponible';
       this.elements.toggleRoutesBtn.disabled = true;
       return;
     }
-    this.elements.toggleRoutesBtn.textContent = this.isShowingAll
-      ? 'Mostrar Solo Rutas Cercanas'
-      : 'Mostrar Todas las Rutas';
+    this.elements.toggleRoutesBtn.textContent = this.isShowingAll ?
+      'Mostrar Solo Rutas Cercanas' :
+      'Mostrar Todas las Rutas';
   },
 
+    // --- ¿Ruta cercana a mi ubicación? ---
+  // Nota: revisa si algún punto del GeoJSON cae dentro del radio cercano actual.
   isRouteNearby(ruta, userLoc, radiusKm) {
-    const routeGeoJSON = ruta.geojson || ruta.routeData;
-    if (!routeGeoJSON?.features?.[0]?.geometry?.coordinates) return false;
-    const coordinates = routeGeoJSON.features[0].geometry.coordinates;
+    if (!ruta.geojson?.features?.[0]?.geometry?.coordinates) return false;
+    const coordinates = ruta.geojson.features[0].geometry.coordinates;
     for (const point of coordinates) {
       const actualPoint = Array.isArray(point[0]) ? point[0] : point;
       const pointLoc = { lon: actualPoint[0], lat: actualPoint[1] };
@@ -840,18 +753,22 @@ const App = {
     return false;
   },
 
+  // --- Haversine simplificado ---
+  // Nota: calcula distancia aproximada en km entre dos coordenadas (lat/lon).
   getDistanceInKm(coords1, coords2) {
     const R = 6371;
     const dLat = (coords2.lat - coords1.lat) * Math.PI / 180;
     const dLon = (coords2.lon - coords1.lon) * Math.PI / 180;
-    const a = Math.sin(dLat/2) ** 2 +
+    const a = Math.sin(dLat / 2) ** 2 +
       Math.cos(coords1.lat * Math.PI / 180) *
       Math.cos(coords2.lat * Math.PI / 180) *
-      Math.sin(dLon/2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      Math.sin(dLon / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   },
 
+  // --- Radio dinámico por zoom ---
+  // Nota: convierte zoom en un radio en km para filtrar rutas cercanas.
   getCurrentNearbyRadiusKm() {
     if (this.settings?.nearbyRadiusKm != null) return this.settings.nearbyRadiusKm;
     const z = this.map?.getZoom() ?? 15;
@@ -863,6 +780,8 @@ const App = {
     return 1.2;
   },
 
+  // --- Alternar una ruta (on/off) ---
+  // Nota: si ya está activa, la quita; si no, la carga (línea, paradas y animación).
   async toggleRuta(buttonEl) {
     const rutaId = buttonEl.dataset.ruta;
     const listItemEl = buttonEl.closest('.list-group-item');
@@ -870,53 +789,62 @@ const App = {
       this.removeRoute(rutaId, buttonEl, listItemEl);
     } else {
       const stopId = buttonEl.dataset.stop;
-      this.addRoute(rutaId, stopId, buttonEl, listItemEl);
+      await this.addRoute(rutaId, stopId, buttonEl, listItemEl);
     }
   },
 
+  // --- Agregar ruta al mapa ---
+  // Nota: dibuja la polyline de la ruta, carga paradas, calcula trayecto y arranca animación del "carrito".
   async addRoute(rutaId, stopId, buttonEl, listItemEl) {
-    buttonEl.classList.add('active');
-    listItemEl.classList.add('active');
+    buttonEl?.classList.add('active');
+    listItemEl?.classList.add('active');
     this.activeLayers[rutaId] = {};
 
     const ruta = this.routeData.find(r => r.id === rutaId);
-    // Manejar tanto el formato nuevo (routeData) como el antiguo (geojson)
-    const geoRuta = ruta ? (ruta.geojson || ruta.routeData) : null;
-    
-    // Intentar obtener paradas desde los datos de la ruta o desde archivo
-    let geoStops = null;
-    if (ruta && ruta.stopsData) {
-      // Usar paradas desde la base de datos
-      geoStops = ruta.stopsData;
-    } else {
-      // Fallback: cargar desde archivo
-      const stopsUrl = `./data/${rutaId}/route_${stopId}_stops.geojson`;
-      geoStops = await this.fetchGeoJSON(stopsUrl);
+    if (!ruta) {
+      console.error(`No se encontraron datos para la ruta ${rutaId}`);
+      this.removeRoute(rutaId, buttonEl, listItemEl);
+      return;
     }
 
+    const geoRuta = ruta.geojson;
+    let geoStops = null;
+
+    // Si la ruta es local, pedimos stops por archivo; si es de BD, ya vienen en el objeto.
+    if (ruta.local) {
+      const stopsUrl = `./data/${rutaId}/route_${stopId}_stops.geojson`;
+      geoStops = await this.fetchGeoJSON(stopsUrl);
+    } else {
+      geoStops = {
+        type: "FeatureCollection",
+        features: ruta.dbParadas || []
+      };
+    }
+
+    // Dibuja la polyline de la ruta
     if (geoRuta) {
       const routeLayer = L.geoJSON(geoRuta, { style: { color: "green", weight: 4 } }).addTo(this.map);
       this.activeLayers[rutaId].routeLayer = routeLayer;
 
-      // Camino: circuito de cobertura que visita todos los componentes
+      // Calcula puntos muestreados para animación fluida
       let latlngs = this.routePathCache[rutaId];
       if (!latlngs) {
         latlngs = this._buildCoverageLoopFromGeoJSON(geoRuta, {
-          connectThreshold: 25,  // metros para considerar continuidad real
-          resampleEvery: 8       // densidad de puntos
+          connectThreshold: 25,
+          resampleEvery: 8
         });
         this.routePathCache[rutaId] = latlngs;
       }
-
       this.activeLayers[rutaId].routeLatLngs = latlngs;
 
+      // Ajusta el mapa a la ruta
       const bounds = L.latLngBounds(latlngs);
       if (bounds.isValid()) {
         this.map.fitBounds(bounds, { padding: [20, 20] });
       }
     }
 
-    // Animación base (recorre todo el circuito y hace loop)
+    // Inicia animación del bus sobre la ruta base (invisible, solo para path)
     const baseLatLngs = this.activeLayers[rutaId]?.routeLatLngs;
     if (baseLatLngs && baseLatLngs.length >= 2) {
       if (this.activeRoute) {
@@ -925,36 +853,42 @@ const App = {
         this.activeRoute = null;
       }
       this.activeRoute = L.polyline(baseLatLngs, { opacity: 0, weight: 0 }).addTo(this.map);
+      // Nota simple: esta función hace que funcione la animación del carrito recorriendo la ruta.
       this.bus.start(this.activeRoute, { speed: 5000, loop: true, fitBounds: false });
     } else {
       console.warn('[RUTABUS] No se pudo construir latlngs para animar el bus.');
     }
 
-    if (geoStops) {
+    // Dibuja paradas
+    if (geoStops && geoStops.features?.length > 0) {
       const stopLayer = L.geoJSON(geoStops, {
-      pointToLayer: (feature, latlng) => {
-        const m = L.marker(latlng, { icon: this.icons.parada });
-        const name = feature?.properties?.name || "Sin nombre";
-        if (this.isAuthenticated()) {
-          m.bindPopup(`<b>Parada:</b> ${name}<br><small>Click: inicio/destino</small>`);
-          m.on('click', () => this._handleStopClick(rutaId, m));
-        } else {
-          m.bindPopup(`<b>Parada:</b> ${name}<br><small>Inicia sesión para marcar inicio/destino</small>`);
-          m.on('click', () => this._nudgeGuest('Seleccionar inicio/destino'));
+        // Nota simple: cada parada se pinta como un marcador y se puede seleccionar para inicio/destino.
+        pointToLayer: (feature, latlng) => {
+          const m = L.marker(latlng, { icon: this.icons.parada });
+          const name = feature?.properties?.name || "Sin nombre";
+          if (this.isAuthenticated()) {
+            m.bindPopup(`<b>Parada:</b> ${name}<br><small>Click: inicio/destino</small>`);
+            m.on('click', () => this._handleStopClick(rutaId, m));
+          } else {
+            m.bindPopup(`<b>Parada:</b> ${name}<br><small>Inicia sesión para marcar inicio/destino</small>`);
+            m.on('click', () => this._nudgeGuest('Seleccionar inicio/destino'));
+          }
+          return m;
         }
-        return m;
-      }
-    }).addTo(this.map);
+      }).addTo(this.map);
       this.activeLayers[rutaId].stopLayer = stopLayer;
       this.activeLayers[rutaId].selection = { start: null, end: null, segmentLayer: null };
     }
 
-    if (!geoRuta && !geoStops) {
-      alert(`No se pudo mostrar la ruta ${rutaId}. Verifica que los archivos existan.`);
+    // Si no hubo datos válidos, revierte
+    if (!geoRuta && (!geoStops || !geoStops.features?.length)) {
+      alert(`No se pudo mostrar la ruta ${rutaId}. Los datos parecen estar incompletos.`);
       this.removeRoute(rutaId, buttonEl, listItemEl);
     }
   },
 
+  // --- Quitar ruta del mapa ---
+  // Nota: elimina polyline, paradas y detiene la animación si ya no quedan rutas activas.
   removeRoute(rutaId, buttonEl, listItemEl) {
     const entry = this.activeLayers[rutaId];
     if (entry?.selection) this._resetSelection(rutaId);
@@ -977,87 +911,86 @@ const App = {
     }
   },
 
+  // --- Actualiza UI según autenticación ---
+  // Nota: muestra/oculta botones para invitados/usuarios y habilita/deshabilita acciones.
   updateAuthUI() {
     const userString = localStorage.getItem('rutabus_user');
     const authed = !!userString;
 
-    // Botones/inputs restringidos:
     const restricteds = [
       this.elements.buscador,
       this.elements.toggleRoutesBtn,
       this.elements.locationBtn,
       this.elements.reportTrafficBtn,
-      document.getElementById('toggleTrafficBtn')
+      this.elements.toggleTrafficBtn
     ].filter(Boolean);
 
     if (authed) {
-      // UI de usuario
-      this.elements.guestButtons.style.display = 'none';
-      this.elements.userButtons.style.display = 'flex';
-      this.elements.guestLegend.style.display = 'none';
+      this.elements.guestButtons && (this.elements.guestButtons.style.display = 'none');
+      this.elements.userButtons && (this.elements.userButtons.style.display = 'flex');
+      this.elements.guestLegend && (this.elements.guestLegend.style.display = 'none');
 
-      // Habilitar controles
-      restricteds.forEach(el => { el.disabled = false; el.classList.remove('requires-auth'); });
+      restricteds.forEach(el => {
+        el.disabled = false;
+        el.classList.remove('requires-auth');
+      });
 
       const userData = JSON.parse(userString);
-      const adminPanelBtn = document.getElementById('admin-panel-btn');
-      
       if (userData.rol === 'administrador') {
-        this.elements.userDisplayName.textContent = 'Administrador';
-        if (adminPanelBtn) adminPanelBtn.style.display = 'block';
+        if (this.elements.userDisplayName) this.elements.userDisplayName.textContent = 'Administrador';
+        if (this.elements.menuIcon?.style) this.elements.menuIcon.style.display = 'block';
       } else {
-        const firstName = userData.nombre.split(' ')[0];
-        this.elements.userDisplayName.textContent = firstName;
-        if (adminPanelBtn) adminPanelBtn.style.display = 'none';
+        const firstName = (userData.nombre || '').split(' ')[0] || 'Usuario';
+        if (this.elements.userDisplayName) this.elements.userDisplayName.textContent = firstName;
+        if (this.elements.menuIcon?.style) this.elements.menuIcon.style.display = 'none';
       }
     } else {
-      // UI de invitado
-      this.elements.guestButtons.style.display = 'flex';
-      this.elements.userButtons.style.display = 'none';
-      this.elements.userDisplayName.textContent = 'Invitado';
-      
-      const adminPanelBtn = document.getElementById('admin-panel-btn');
-      if (adminPanelBtn) adminPanelBtn.style.display = 'none';
+      this.elements.guestButtons && (this.elements.guestButtons.style.display = 'flex');
+      this.elements.userButtons && (this.elements.userButtons.style.display = 'none');
+      if (this.elements.userDisplayName) this.elements.userDisplayName.textContent = 'Invitado';
+      if (this.elements.menuIcon?.style) this.elements.menuIcon.style.display = 'none';
 
-      // Deshabilitar controles
       restricteds.forEach(el => {
         el.disabled = true;
         if (!el.classList.contains('requires-auth')) el.classList.add('requires-auth');
       });
-      // Ajusta placeholder del buscador
+
       if (this.elements.buscador) {
         this.elements.buscador.value = '';
         this.elements.buscador.placeholder = 'Buscar ruta (requiere iniciar sesión)';
       }
-      // Mostrar banner
-      this.elements.guestLegend.style.display = 'block';
+      this.elements.guestLegend && (this.elements.guestLegend.style.display = 'block');
     }
   },
 
+  // --- Cerrar sesión ---
+  // Nota: limpia localStorage y recarga la página para reiniciar el estado.
   logout() {
     localStorage.removeItem('rutabus_user');
     window.location.reload();
   },
 
-  // --- Event Listeners ---
+  // --- Listeners de UI ---
+  // Nota: conecta eventos de clic, input, teclado y navegación del panel/admin.
   setupEventListeners() {
-    this.elements.rutasLista.addEventListener("click", (e) => {
-    const btn = e.target.closest(".ruta-btn");
+    // Lista de rutas (toggle de cada ruta)
+    this.elements.rutasLista?.addEventListener("click", (e) => {
+      const btn = e.target.closest(".ruta-btn");
       if (btn) this.toggleRuta(btn);
     });
 
-    // Buscador (restringido)
-    this.elements.buscador.addEventListener('focus', () => {
+    // Buscador (bloquea si no hay sesión)
+    this.elements.buscador?.addEventListener('focus', () => {
       if (!this.isAuthenticated()) {
         this._nudgeGuest('Buscar rutas');
         this.elements.buscador.blur();
       }
     });
-    this.elements.buscador.addEventListener('input', () => {
+    this.elements.buscador?.addEventListener('input', () => {
       if (!this.isAuthenticated()) return;
       this.renderRouteList();
     });
-    this.elements.buscador.addEventListener('keydown', (e) => {
+    this.elements.buscador?.addEventListener('keydown', (e) => {
       if (!this.isAuthenticated()) return e.preventDefault();
       if (e.key === 'Escape') {
         e.target.value = '';
@@ -1066,18 +999,20 @@ const App = {
     });
 
     // Logout
-    this.elements.logoutBtn.addEventListener('click', () => this.logout());
+    this.elements.logoutBtn?.addEventListener('click', () => this.logout());
 
-    // Sidebar toggle (siempre permitido)
-    this.elements.toggleSidebarBtn.addEventListener('click', () => {
-      this.elements.sidebar.classList.toggle('collapsed');
-      const isCollapsed = this.elements.sidebar.classList.contains('collapsed');
-      this.elements.toggleSidebarBtn.textContent = isCollapsed ? '▶️' : '◀️';
-      this.elements.toggleSidebarBtn.classList.toggle('collapsed', isCollapsed);
+    // Sidebar
+    this.elements.toggleSidebarBtn?.addEventListener('click', () => {
+      this.elements.sidebar?.classList.toggle('collapsed');
+      const isCollapsed = this.elements.sidebar?.classList.contains('collapsed');
+      if (this.elements.toggleSidebarBtn) {
+        this.elements.toggleSidebarBtn.textContent = isCollapsed ? '▶️' : '◀️';
+        this.elements.toggleSidebarBtn.classList.toggle('collapsed', !!isCollapsed);
+      }
     });
 
-    // Rutas cercanas vs todas (restringido)
-    this.elements.toggleRoutesBtn.addEventListener('click', () => {
+    // Alternar cercanas/todas
+    this.elements.toggleRoutesBtn?.addEventListener('click', () => {
       if (!this.isAuthenticated()) return this._nudgeGuest('Rutas cercanas');
       this.isShowingAll = !this.isShowingAll;
       Object.keys(this.activeLayers).forEach(rid => this._resetSelection(rid));
@@ -1085,18 +1020,41 @@ const App = {
       this.renderRouteList();
     });
 
-    // Ubicación (restringido)
-    this.elements.locationBtn.addEventListener('click', () => {
+    // Ubicación en vivo
+    this.elements.locationBtn?.addEventListener('click', () => {
       if (!this.isAuthenticated()) return this._nudgeGuest('Mi ubicación');
       this.toggleUserLocation();
     });
 
-    // Menú admin eliminado - ahora se usa el botón directo Panel Admin
+    // Icono/menú admin
+    this.elements.menuIcon?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const menu = this.elements.adminMenu;
+      if (!menu) return;
+      menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    });
+    window.addEventListener('click', () => {
+      if (this.elements.adminMenu?.style.display === 'block') {
+        this.elements.adminMenu.style.display = 'none';
+      }
+    });
 
+    // Ir al panel admin (si existe)
+    this.elements.addRouteBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.location.href = '/admin.html';
+    });
 
+    // Reporte de tráfico
+    this.elements.reportTrafficBtn?.addEventListener('click', () => {
+      if (!this.isAuthenticated()) return this._nudgeGuest('Reportar tráfico');
+      // Nota simple: abre (o abriría) el modal para reportar tráfico.
+      alert('Aquí abrirías tu modal/form para reportar tráfico (solo usuarios).');
+    });
   },
 
-  // --- Helpers de red / util ---
+    // --- Helper: fetchGeoJSON con tolerancia a fallos ---
+  // Nota: trae un GeoJSON por URL y devuelve null si está vacío o falla.
   async fetchGeoJSON(url) {
     try {
       const res = await fetch(url, { cache: "no-cache" });
@@ -1108,6 +1066,8 @@ const App = {
     }
   },
 
+  // --- Helper: normalizar texto ---
+  // Nota: quita acentos y pasa a minúsculas para búsquedas más amigables.
   normalizeString(str) {
     return (str || '')
       .toString()
@@ -1116,6 +1076,8 @@ const App = {
       .replace(/[\u0300-\u036f]/g, '');
   },
 
+  // --- Helper: ¿hay sesión iniciada? ---
+  // Nota: valida si existe un objeto de usuario en localStorage.
   isAuthenticated() {
     try {
       const u = JSON.parse(localStorage.getItem('rutabus_user') || 'null');
@@ -1123,6 +1085,8 @@ const App = {
     } catch { return false; }
   },
 
+  // --- Helper: ¿es administrador? ---
+  // Nota: revisa el rol del usuario guardado en localStorage.
   isAdmin() {
     try {
       const u = JSON.parse(localStorage.getItem('rutabus_user') || 'null');
@@ -1130,57 +1094,48 @@ const App = {
     } catch { return false; }
   },
 
-  // --- Geometría robusta ---
+  // ==================== GEOMETRÍA (trayectos y muestreo) ====================
 
-  // Devuelve un recorrido que cubre TODO: conecta componentes por cercanía y “salta” entre componentes
+  // --- Construir recorrido continuo desde GeoJSON ---
+  // Nota: une segmentos cercanos y re-muestrea puntos para una animación fluida.
   _buildCoverageLoopFromGeoJSON(geojson, { connectThreshold = 25, resampleEvery = 8 } = {}) {
-    const pieces = this._extractPieces(geojson); // arrays de L.LatLng
+    const pieces = this._extractPieces(geojson);
     if (pieces.length === 0) return [];
 
-    // 1) Construir primer camino (tronco)
     const main = this._connectPieces(pieces.slice(), connectThreshold);
 
-    // 2) Recolectar piezas no usadas (las que no pudieron unirse dentro del umbral)
-    const usedFlags = new WeakSet([main]); // dummy para no usar main
+    // Copia restante para revisar anexos no conectados “cercanos”
     const remaining = [];
     for (const p of pieces) remaining.push(p);
 
-    // El algoritmo de _connectPieces ya consumió algunas piezas,
-    // pero aquí no llevamos flags internos; calculamos componentes desconectados
-    // por proximidad: agrupamos piezas cuyo extremo está a <= connectThreshold del main.
     const closeTo = (a, b, thr) => a.distanceTo(b) <= thr;
-
-    // Separamos componentes por cercanía al "main"
     const endpoints = (arr) => [arr[0], arr[arr.length - 1]];
     const thr = connectThreshold;
-
-    const attached = [main.slice()];
     const unattached = [];
 
     for (const seg of remaining) {
       const [s, e] = endpoints(seg);
       const [ms, me] = endpoints(main);
-      const nearMain = closeTo(s, ms, thr) || closeTo(s, me, thr) || closeTo(e, ms, thr) || closeTo(e, me, thr);
+      const nearMain =
+        closeTo(s, ms, thr) || closeTo(s, me, thr) ||
+        closeTo(e, ms, thr) || closeTo(e, me, thr);
       if (!nearMain) unattached.push(seg.slice());
     }
 
-    // 3) Para cada componente no adjunto, lo conectamos al circuito mediante el extremo más cercano actual
     let tour = main.slice();
-    let tourEnds = () => [tour[0], tour[tour.length - 1]];
+    const tourEnds = () => [tour[0], tour[tour.length - 1]];
 
     while (unattached.length) {
-      // elegir la pieza (en forward o reverse) que minimiza la distancia desde cualquiera de los extremos del tour
       let bestIdx = -1, bestRev = false, bestToEnd = true, bestD = Infinity;
       const [tStart, tEnd] = tourEnds();
 
       for (let i = 0; i < unattached.length; i++) {
         const seg = unattached[i];
         const s = seg[0], e = seg[seg.length - 1];
-        const d1 = tEnd.distanceTo(s); // conectar al final → forward
-        const d2 = tEnd.distanceTo(e); // conectar al final → reverse
-        const d3 = tStart.distanceTo(e); // conectar al inicio → forward (prepend)
-        const d4 = tStart.distanceTo(s); // conectar al inicio → reverse (prepend)
-
+        const d1 = tEnd.distanceTo(s);
+        const d2 = tEnd.distanceTo(e);
+        const d3 = tStart.distanceTo(e);
+        const d4 = tStart.distanceTo(s);
         if (d1 < bestD) { bestD = d1; bestIdx = i; bestRev = false; bestToEnd = true; }
         if (d2 < bestD) { bestD = d2; bestIdx = i; bestRev = true;  bestToEnd = true; }
         if (d3 < bestD) { bestD = d3; bestIdx = i; bestRev = false; bestToEnd = false; }
@@ -1191,10 +1146,8 @@ const App = {
       const seq = bestRev ? chosen.slice().reverse() : chosen;
 
       if (bestToEnd) {
-        // añadimos CON CONECTOR RECTO si la distancia es > thr
         const last = tour[tour.length - 1];
-        if (last.distanceTo(seq[0]) > 0) tour.push(seq[0]); // pequeño conector recto
-        // evitar duplicar nodo en unión
+        if (last.distanceTo(seq[0]) > 0) tour.push(seq[0]);
         if (tour[tour.length - 1].equals(seq[0])) seq.shift();
         tour.push(...seq);
       } else {
@@ -1205,18 +1158,20 @@ const App = {
       }
     }
 
-    // 4) Limpieza y remuestreo final
     const cleaned = this._dedupeConsecutive(tour);
-    const dense = this._resamplePath(cleaned, resampleEvery);
-    return dense;
+    return this._resamplePath(cleaned, resampleEvery);
   },
 
+  // --- Extraer piezas LineString/MultiLineString ---
+  // Nota: transforma coordenadas del GeoJSON en arrays de L.LatLng.
   _extractPieces(geojson) {
     const out = [];
     if (!geojson?.features) return out;
+
     for (const f of geojson.features) {
       const g = f.geometry;
       if (!g) continue;
+
       if (g.type === 'LineString') {
         const arr = g.coordinates.map(([lng, lat]) => L.latLng(lat, lng));
         if (arr.length >= 2) out.push(arr);
@@ -1230,12 +1185,13 @@ const App = {
     return out;
   },
 
+  // --- Conectar piezas cercanas ---
+  // Nota: elige segmentos más largos primero y une extremos si están dentro del umbral.
   _connectPieces(pieces, thresholdMeters) {
-    // copia mutable
     const remaining = pieces.map(p => p.slice());
     remaining.sort((a, b) => b.length - a.length);
-    const path = remaining.shift();
 
+    const path = remaining.shift();
     const endPts = (arr) => ({ start: arr[0], end: arr[arr.length - 1] });
 
     while (remaining.length) {
@@ -1269,10 +1225,11 @@ const App = {
         path.unshift(...seq);
       }
     }
-
     return path;
   },
 
+  // --- Quitar duplicados consecutivos ---
+  // Nota: evita puntos repetidos que rompen cálculos de distancia/animación.
   _dedupeConsecutive(latlngs) {
     const out = [];
     for (let i = 0; i < latlngs.length; i++) {
@@ -1282,6 +1239,8 @@ const App = {
     return out;
   },
 
+  // --- Re-muestrear ruta cada N metros ---
+  // Nota: crea puntos intermedios espaciados para animación uniforme.
   _resamplePath(latlngs, targetMeters = 8) {
     if (latlngs.length < 2) return latlngs.slice();
     const out = [latlngs[0]];
@@ -1303,24 +1262,13 @@ const App = {
       carry = (targetMeters - ((d - carry) % targetMeters)) % targetMeters;
       out.push(b);
     }
-
     return this._dedupeConsecutive(out);
   },
 
-  _firstPolylineFromLayer(layer) {
-    if (!layer) return null;
-    if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) return layer;
-    if (typeof layer.getLayers === 'function') {
-      const arr = layer.getLayers();
-      for (const l of arr) {
-        const found = this._firstPolylineFromLayer(l);
-        if (found) return found;
-      }
-    }
-    return null;
-  },
+  // ==================== SELECCIÓN DE PARADAS / SEGMENTOS ====================
 
-  // ---------- Selección de paradas y segmento ----------
+  // --- Índice más cercano en camino ---
+  // Nota: busca el punto de ruta más cercano a un latlng dado.
   _nearestIndexInPath(latlngs, target) {
     let bestIdx = 0, bestD = Infinity;
     for (let i = 0; i < latlngs.length; i++) {
@@ -1330,16 +1278,20 @@ const App = {
     return bestIdx;
   },
 
+  // --- Reset selección de una ruta ---
+  // Nota: limpia inicio/destino, segmento pintado y detiene animación local.
   _resetSelection(rutaId) {
     const entry = this.activeLayers[rutaId];
     if (!entry) return;
+
     const sel = entry.selection;
     if (sel?.segmentLayer) {
       this.map.removeLayer(sel.segmentLayer);
       sel.segmentLayer = null;
     }
     if (sel?.start?.marker) sel.start.marker.setIcon(this.icons.parada);
-    if (sel?.end?.marker) sel.end.marker.setIcon(this.icons.parada);
+    if (sel?.end?.marker)   sel.end.marker.setIcon(this.icons.parada);
+
     entry.selection = { start: null, end: null, segmentLayer: null };
 
     if (this.activeRoute) {
@@ -1349,6 +1301,8 @@ const App = {
     }
   },
 
+  // --- Actualizar segmento entre inicio/destino ---
+  // Nota: pinta el tramo entre dos paradas seleccionadas y mueve el “carrito” ahí.
   _updateSegment(rutaId) {
     const entry = this.activeLayers[rutaId];
     if (!entry || !entry.routeLatLngs) return;
@@ -1378,14 +1332,17 @@ const App = {
     }
     this.bus.stop();
     this.activeRoute = L.polyline(segmentLatLngs, { opacity: 0, weight: 0 }).addTo(this.map);
+    // Nota simple: esta función hace que el carrito recorra solo el segmento elegido.
     this.bus.start(this.activeRoute, { speed: 5000, loop: true, fitBounds: true });
   },
 
+  // --- Click en parada (inicio/destino) ---
+  // Nota: alterna selección de inicio/destino y re-dibuja el segmento.
   _handleStopClick(rutaId, marker) {
     if (!this.isAuthenticated()) return this._nudgeGuest('Seleccionar inicio/destino');
+
     const entry = this.activeLayers[rutaId];
     if (!entry) return;
-
     if (!entry.selection) entry.selection = { start: null, end: null, segmentLayer: null };
 
     const latlng = marker.getLatLng();
@@ -1409,11 +1366,15 @@ const App = {
     }
   },
 
-  // ---------- Animación de bus (robusta) ----------
+  // ==================== ANIMACIÓN DEL BUS ====================
+
+  // --- Objeto bus: controla la animación del “carrito” ---
+  // Nota: recorre una polyline usando requestAnimationFrame y distancias acumuladas.
   bus: {
     marker: null,
     animFrame: null,
 
+    // Nota simple: detiene la animación y elimina el marcador.
     stop() {
       if (this.animFrame) {
         cancelAnimationFrame(this.animFrame);
@@ -1425,14 +1386,7 @@ const App = {
       }
     },
 
-    /**
-     * Inicia la animación
-     * @param {L.Polyline} polyline
-     * @param {Object} opts
-     * @param {number} [opts.speed=8] metros/seg
-     * @param {boolean} [opts.loop=true]
-     * @param {boolean} [opts.fitBounds=false]
-     */
+    // Nota simple: inicia la animación sobre una polyline dada (loop opcional).
     start(polyline, opts = {}) {
       const { speed = 8, loop = true, fitBounds = false } = opts;
       this.stop();
@@ -1446,7 +1400,6 @@ const App = {
         if (b.isValid()) polyline._map.fitBounds(b, { padding: [30, 30] });
       }
 
-      // Precompute segmentos (sin d=0)
       const segments = [];
       let total = 0;
       for (let i = 0; i < latlngs.length - 1; i++) {
@@ -1458,7 +1411,8 @@ const App = {
       }
       if (segments.length === 0 || total === 0) return;
 
-      this.marker = L.marker(segments[0].a, { icon: App.icons.bus, zIndexOffset: 1000 }).addTo(polyline._map);
+      this.marker = L.marker(segments[0].a, { icon: App.icons.bus, zIndexOffset: 1000 })
+        .addTo(polyline._map);
 
       const tTotal = (total / speed) * 1000;
       let t0 = null;
@@ -1479,29 +1433,24 @@ const App = {
           }
         }
 
-        // búsqueda binaria
+        // búsqueda binaria del segmento actual
         let lo = 0, hi = segments.length - 1, idx = 0;
         while (lo <= hi) {
           const mid = (lo + hi) >> 1;
           const s = segments[mid];
-          if (dist < s.acc) {
-            hi = mid - 1;
-          } else if (dist > s.acc + s.d) {
-            lo = mid + 1;
-          } else {
-            idx = mid;
-            break;
-          }
+          if (dist < s.acc) hi = mid - 1;
+          else if (dist > s.acc + s.d) lo = mid + 1;
+          else { idx = mid; break; }
         }
         idx = Math.min(idx, segments.length - 1);
-        const seg = segments[idx];
 
+        const seg = segments[idx];
         const segDist = Math.max(0, Math.min(seg.d, dist - seg.acc));
         const t = seg.d > 0 ? (segDist / seg.d) : 0;
         const lat = seg.a.lat + (seg.b.lat - seg.a.lat) * t;
         const lng = seg.a.lng + (seg.b.lng - seg.a.lng) * t;
-        this.marker.setLatLng([lat, lng]);
 
+        this.marker.setLatLng([lat, lng]);
         this.animFrame = requestAnimationFrame(step);
       };
 
@@ -1509,45 +1458,35 @@ const App = {
     }
   },
 
-  // === TRAFICO ===
+  // ==================== TRÁFICO ====================
+
+  // --- Estado de tráfico ---
+  // Nota: contenedor de la capa de tráfico y lista de alertas activas.
   traffic: {
     layer: null,
     alerts: [],
     listContainer: null
   },
 
-      // Carga alertas aprobadas del JSON + agrega borradores locales (pendientes no vencidas)
-    async fetchTrafficAlerts() {
-      try {
-        const res = await fetch('./data/traffic/alerts.json', { cache: 'no-store' });
-        const all = await res.json();
-        const now = Date.now();
+  // --- Descarga alertas de tráfico ---
+  // Nota: lee alerts.json, filtra por estado y expiración.
+  async fetchTrafficAlerts() {
+    try {
+      const res = await fetch('./data/traffic/alerts.json', { cache: 'no-store' });
+      const all = await res.json();
+      const now = Date.now();
+      this.traffic.alerts = all.filter(a => {
+        const exp = a.expira ? Date.parse(a.expira) : now + 3600000;
+        return (a.estado === 'aprobada') && (exp > now);
+      });
+    } catch (e) {
+      console.error('Error cargando alerts.json', e);
+      this.traffic.alerts = [];
+    }
+  },
 
-        // Aprobadas (vigentes)
-        const approved = all.filter(a => {
-          const exp = a.expira ? Date.parse(a.expira) : now + 3600000; // 1h por defecto si no trae expira
-          return (a.estado === 'aprobada') && (exp > now);
-        });
-
-        // Borradores locales (pendientes) guardados por el usuario en esta máquina
-        const drafts = JSON.parse(localStorage.getItem('trafficDrafts') || '[]')
-          .filter(a => Date.parse(a.expira || 0) > now);
-
-        // Mezcla: primero borradores (para que el usuario vea lo que acaba de reportar),
-        // luego aprobadas del JSON
-        this.traffic.alerts = [...drafts, ...approved];
-
-      } catch (e) {
-        console.error('Error cargando alerts.json', e);
-        // En caso de error de red, al menos muestra borradores locales vigentes
-        const now = Date.now();
-        const drafts = JSON.parse(localStorage.getItem('trafficDrafts') || '[]')
-          .filter(a => Date.parse(a.expira || 0) > now);
-        this.traffic.alerts = drafts;
-      }
-    },
-
-
+  // --- Pintar alertas en el mapa ---
+  // Nota: coloca marcadores/círculos por severidad y opcionalmente renderiza segmento de ruta afectado.
   renderTraffic() {
     if (!this.traffic.layer) return;
     this.traffic.layer.clearLayers();
@@ -1589,20 +1528,24 @@ const App = {
     });
   },
 
+  // --- Lista lateral de alertas ---
+  // Nota: ordena por cercanía a mi ubicación y permite centrar el mapa en cada alerta.
   renderTrafficList() {
     const ul = this.traffic.listContainer;
     if (!ul) return;
-    ul.innerHTML = '';
 
+    ul.innerHTML = '';
     const pos = this.userLocation || null;
 
     const items = this.traffic.alerts
       .map(a => {
         let distKm = null;
         if (pos && a.coord) {
-          const p1 = L.latLng(pos.lat, pos.lng);
+          const p1 = L.latLng(pos.lat, pos.lon ?? pos.lng ?? pos.long ?? pos.lon);
           const p2 = L.latLng(a.coord.lat, a.coord.lng);
-          distKm = p1.distanceTo(p2) / 1000;
+          // Si pos no tenía 'lng', intenta 'lon'
+          const p1Fixed = L.latLng(pos.lat, (pos.lng ?? pos.lon));
+          distKm = p1Fixed.distanceTo(p2) / 1000;
         }
         return { a, distKm };
       })
@@ -1631,10 +1574,8 @@ const App = {
         <div class="ms-2 text-nowrap"><small>${distTxt}</small></div>
       `;
 
-      li.querySelector('button').addEventListener('click', () => {
-        if (a.coord) {
-          this.map.setView([a.coord.lat, a.coord.lng], Math.max(this.map.getZoom(), 15));
-        }
+      li.querySelector('button')?.addEventListener('click', () => {
+        if (a.coord) this.map.setView([a.coord.lat, a.coord.lng], Math.max(this.map.getZoom(), 15));
       });
 
       ul.appendChild(li);
@@ -1648,31 +1589,37 @@ const App = {
     }
   },
 
+  // --- Pintar segmento de ruta afectado por una alerta ---
+  // Nota: carga el route.json de la ruta y dibuja un polyline resaltado (simple).
   async _renderTrafficSegment(alerta) {
-    // Construir path continuo para esa ruta
     const geo = await this.fetchGeoJSON(`./data/${alerta.rutaId}/route.json`);
     if (!geo) return;
     const latlngs = this._buildCoverageLoopFromGeoJSON(geo, { connectThreshold: 25, resampleEvery: 8 });
     if (!latlngs.length) return;
 
-    // Si tienes stops indexados, aquí podrías mapear por IDs de parada → indices
-    // Por ahora pintamos todo el recorrido como referencia simple:
-    L.polyline(latlngs, { color: '#e11d48', weight: 6, opacity: 0.6, dashArray: '6 6' })
-      .addTo(this.traffic.layer);
+    L.polyline(latlngs, {
+      color: '#e11d48',
+      weight: 6,
+      opacity: 0.6,
+      dashArray: '6 6'
+    }).addTo(this.traffic.layer);
   },
 
+  // --- Aviso para invitados (nudges) ---
+  // Nota: anima una leyenda para avisar que la función requiere iniciar sesión.
   _nudgeGuest(featureName = '') {
     if (this.elements.guestLegend) {
-      this.elements.guestLegend.classList.remove('pulse'); // reinicia anim
+      this.elements.guestLegend.classList.remove('pulse');
+      // reflow para reiniciar la animación CSS
       void this.elements.guestLegend.offsetWidth;
       this.elements.guestLegend.classList.add('pulse');
     }
     if (featureName) {
       alert(`Inicia sesión para usar: ${featureName}.`);
     }
-  },
+  }
+}; // <- Cierre del objeto App
 
-
-};
-
+// --- Bootstrap del módulo ---
+// Nota: cuando el DOM esté listo, inicializa la app.
 document.addEventListener('DOMContentLoaded', () => App.init());

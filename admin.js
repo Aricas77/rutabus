@@ -1,167 +1,210 @@
-/**
- * Configuración inicial del mapa para el panel de administración
- * Utiliza la biblioteca Leaflet para renderizar el mapa centrado en Xalapa
- */
-const adminMap = L.map("admin-map").setView([19.5438, -96.9103], 13);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-}).addTo(adminMap);
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("¡El archivo admin.js se está ejecutando!");
+    // --- VARIABLES Y CONFIGURACIÓN ---
+    let rutaEnEdicion = null;
+    let rutaGeoJSON = null;
+    let paradasGeoJSON = [];
 
-/**
- * Configuración de las herramientas de dibujo en el mapa
- * Permite dibujar líneas (rutas) y colocar marcadores (paradas)
- */
-const drawnItems = new L.FeatureGroup();
-adminMap.addLayer(drawnItems);
+    // --- ELEMENTOS DEL DOM ---
+    const routeForm = document.getElementById('route-form');
+    const messageDiv = document.getElementById('admin-message');
+    const guardarBtn = document.getElementById('guardar-btn');
+    const actualizarBtn = document.getElementById('actualizar-btn');
+    const cancelarBtn = document.getElementById('cancelar-btn');
+    const listaRutasContainer = document.getElementById('lista-rutas-container');
+    const formTitle = document.getElementById('form-title');
+    const crearTabBtn = document.getElementById('crear-tab');
+    const bootstrapTab = new bootstrap.Tab(crearTabBtn);
 
-const drawControl = new L.Control.Draw({
-    edit: { featureGroup: drawnItems, remove: true },
-    draw: {
-        // Deshabilitamos todas las formas excepto polyline (ruta) y marker (paradas)
-        polygon: false, rectangle: false, circle: false, circlemarker: false,
-        polyline: { shapeOptions: { color: '#2b6cb0', weight: 5 } },
-        marker: {
-            icon: L.icon({
-                iconUrl: "https://static.vecteezy.com/system/resources/previews/009/385/848/original/bus-stop-clipart-design-illustration-free-png.png",
-                iconSize: [30, 30],
-                iconAnchor: [15, 30]
-            })
-        }
-    }
-});
-adminMap.addControl(drawControl);
-
-/**
- * Variables para almacenar los datos de la ruta y paradas
- * rutaGeoJSON: Almacena la línea de la ruta en formato GeoJSON
- * paradasGeoJSON: Array que almacena todas las paradas en formato GeoJSON
- */
-let rutaGeoJSON = null;
-let paradasGeoJSON = [];
-
-/**
- * Evento que se dispara cuando se crea un nuevo elemento en el mapa
- * Maneja la creación de rutas (polyline) y paradas (marker)
- */
-adminMap.on(L.Draw.Event.CREATED, function (event) {
-    const layer = event.layer;
-    const type = event.layerType;
-
-    if (type === 'polyline') {
-        // Si ya existe una ruta, la reemplazamos
-        if (rutaGeoJSON) {
-            drawnItems.eachLayer(l => {
-                if (l instanceof L.Polyline) {
-                    drawnItems.removeLayer(l);
-                }
-            });
-        }
-        rutaGeoJSON = layer.toGeoJSON();
-        console.log("Ruta dibujada:", rutaGeoJSON);
-    }
-
-    if (type === 'marker') {
-        paradasGeoJSON.push(layer.toGeoJSON());
-        console.log("Paradas actuales:", paradasGeoJSON);
-    }
-
-    drawnItems.addLayer(layer);
-});
-
-/**
- * Evento que se dispara cuando se elimina un elemento del mapa
- * Actualiza las variables de ruta y paradas según corresponda
- */
-adminMap.on('draw:deleted', function(e) {
-    e.layers.eachLayer(function(layer) {
-        if (layer instanceof L.Polyline) {
-            rutaGeoJSON = null;
-            console.log("Se eliminó la ruta.");
-        } else if (layer instanceof L.Marker) {
-            const deletedGeoJSON = layer.toGeoJSON();
-            paradasGeoJSON = paradasGeoJSON.filter(p => 
-                p.geometry.coordinates.toString() !== deletedGeoJSON.geometry.coordinates.toString()
-            );
-            console.log("Se eliminó una parada. Paradas restantes:", paradasGeoJSON);
-        }
-    });
-});
-
-/**
- * Configuración y manejo del formulario de rutas
- * Obtiene referencias a los elementos del formulario y configura el evento de envío
- */
-const routeForm = document.getElementById('route-form');
-const routeNameInput = document.getElementById('routeName');
-const routeIdInput = document.getElementById('routeId');
-const routeStopInput = document.getElementById('routeStop');
-const messageDiv = document.getElementById('admin-message');
-
-/**
- * Manejador del evento submit del formulario
- * Valida los datos, construye el objeto de ruta y lo envía al servidor
- */
-routeForm.addEventListener('submit', async function(event) {
-    event.preventDefault();
-
-    // Validaciones
-    if (!rutaGeoJSON) {
-        showMessage('error', 'Error: Debes dibujar la línea de la ruta en el mapa.');
-        return;
-    }
-    if (paradasGeoJSON.length === 0) {
-        showMessage('error', 'Error: Debes marcar al menos una parada en el mapa.');
-        return;
-    }
-
-    // Construcción del objeto de datos
-    const routeData = {
-        nombre: routeNameInput.value,
-        id: routeIdInput.value,
-        stop: routeStopInput.value,
-        rutaGeoJSON: rutaGeoJSON,
-        paradasGeoJSON: paradasGeoJSON
+    // --- CAMPOS DEL FORMULARIO ---
+    const inputs = {
+        nombre: document.getElementById('routeName'),
+        id: document.getElementById('routeId'),
+        stop: document.getElementById('routeStop'),
+        horaInicio: document.getElementById('horaInicio'),
+        horaFinal: document.getElementById('horaFinal'),
+        distanciaKm: document.getElementById('distanciaKm'),
+        duracionMin: document.getElementById('duracionMin'),
+        mujerSegura: document.getElementById('mujerSegura'),
     };
 
-    // Envío de datos al servidor
-    try {
-        const response = await fetch('/api/rutas', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(routeData)
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showMessage('success', result.message);
-            // Limpieza del formulario y el mapa
-            routeForm.reset();
-            drawnItems.clearLayers();
-            rutaGeoJSON = null;
-            paradasGeoJSON = [];
-        } else {
-            showMessage('error', result.message);
+    // --- CONFIGURACIÓN DEL MAPA ---
+    const adminMap = L.map("admin-map").setView([19.5438, -96.9103], 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+    }).addTo(adminMap);
+    const drawnItems = new L.FeatureGroup();
+    adminMap.addLayer(drawnItems);
+    new L.Control.Draw({
+        edit: { featureGroup: drawnItems },
+        draw: {
+            polygon: false, rectangle: false, circle: false, circlemarker: false,
+            polyline: { shapeOptions: { color: '#2b6cb0', weight: 5 } },
+            marker: { icon: L.icon({ iconUrl: "https://api.iconify.design/mdi/bus-stop.svg?color=%230d6efd", iconSize: [30, 30], iconAnchor: [15, 30] }) }
         }
+    }).addTo(adminMap);
+    
+    // --- FUNCIONES PRINCIPALES ---
+    const resetEditorState = () => {
+        routeForm.reset();
+        drawnItems.clearLayers();
+        rutaGeoJSON = null;
+        paradasGeoJSON = [];
+        rutaEnEdicion = null;
+        inputs.id.disabled = false;
+        formTitle.textContent = "Crear Nueva Ruta";
+        guardarBtn.style.display = 'block';
+        actualizarBtn.style.display = 'none';
+        cancelarBtn.style.display = 'none';
+    };
+    
+    const updateGeoJSONFromLayers = () => {
+        rutaGeoJSON = null;
+        paradasGeoJSON = [];
+        drawnItems.eachLayer(layer => {
+            if (layer instanceof L.Polyline) rutaGeoJSON = layer.toGeoJSON();
+            else if (layer instanceof L.Marker) paradasGeoJSON.push(layer.toGeoJSON());
+        });
+    };
 
-    } catch (error) {
-        console.error('Error al enviar la ruta:', error);
-        showMessage('error', 'Error de conexión con el servidor.');
-    }
+    const showMessage = (type, text) => {
+        messageDiv.innerHTML = `<div class="alert ${type === 'success' ? 'alert-success' : 'alert-danger'}">${text}</div>`;
+        setTimeout(() => { messageDiv.innerHTML = ''; }, 4000);
+    };
+
+    const cargarRutas = async () => {
+        try {
+            const response = await fetch('/api/rutas');
+            const data = await response.json();
+            listaRutasContainer.innerHTML = '';
+            
+            if (!data.success || data.rutas.length === 0) {
+                listaRutasContainer.innerHTML = '<p class="text-muted">No hay rutas guardadas.</p>';
+                return;
+            }
+
+            const table = document.createElement('table');
+            table.className = 'table table-striped table-hover';
+            table.innerHTML = `<thead><tr><th>Nombre</th><th>ID</th><th class="text-end">Acciones</th></tr></thead><tbody></tbody>`;
+            const tbody = table.querySelector('tbody');
+            data.rutas.sort((a,b) => a.id.localeCompare(b.id)).forEach(ruta => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${ruta.nombre}</td><td>${ruta.id}</td><td class="text-end"><button class="btn btn-sm btn-warning editar-ruta" data-id="${ruta.id}">Editar</button> <button class="btn btn-sm btn-danger eliminar-ruta" data-id="${ruta.id}">Eliminar</button></td>`;
+                tbody.appendChild(tr);
+            });
+            listaRutasContainer.appendChild(table);
+        } catch (error) { showMessage('error', 'No se pudieron cargar las rutas.'); }
+    };
+
+    const iniciarEdicion = async (rutaId) => {
+        try {
+            const response = await fetch('/api/rutas');
+            const data = await response.json();
+            if (!data.success) throw new Error('No se pudo obtener la ruta');
+            const ruta = data.rutas.find(r => r.id === rutaId);
+            if (!ruta) throw new Error('Ruta no encontrada');
+            resetEditorState();
+            rutaEnEdicion = ruta;
+            for (const key in inputs) {
+                if (key in ruta) {
+                    inputs[key].type === 'checkbox' ? inputs[key].checked = ruta[key] : inputs[key].value = ruta[key];
+                }
+            }
+            if (ruta.ruta) L.geoJSON(ruta.ruta).getLayers().forEach(l => drawnItems.addLayer(l));
+            if (ruta.paradas) ruta.paradas.forEach(p => L.geoJSON(p).getLayers().forEach(l => drawnItems.addLayer(l)));
+            updateGeoJSONFromLayers();
+            inputs.id.disabled = true;
+            formTitle.textContent = `Editando Ruta: ${ruta.nombre}`;
+            guardarBtn.style.display = 'none';
+            actualizarBtn.style.display = 'block';
+            cancelarBtn.style.display = 'block';
+            bootstrapTab.show();
+            if (drawnItems.getLayers().length > 0) adminMap.fitBounds(drawnItems.getBounds().pad(0.1));
+        } catch (error) { showMessage('error', `Error al cargar ruta para editar: ${error.message}`); }
+    };
+    
+    const eliminarRuta = async (rutaId) => {
+        if (!confirm(`¿Seguro que quieres eliminar la ruta con ID: ${rutaId}?`)) return;
+        try {
+            const response = await fetch(`/api/rutas/${rutaId}`, { method: 'DELETE' });
+            const result = await response.json();
+            if (result.success) {
+                showMessage('success', 'Ruta eliminada.');
+                cargarRutas();
+            } else { throw new Error(result.message); }
+        } catch (error) { showMessage('error', `Error al eliminar: ${error.message}`); }
+    };
+
+    const recolectarDatosFormulario = () => {
+        const formData = {};
+        for (const key in inputs) {
+            formData[key] = inputs[key].type === 'checkbox' ? inputs[key].checked : inputs[key].value;
+        }
+        formData.rutaGeoJSON = rutaGeoJSON;
+        formData.paradasGeoJSON = paradasGeoJSON;
+        return formData;
+    };
+    
+    // --- MANEJADORES DE EVENTOS ---
+    adminMap.on(L.Draw.Event.CREATED, (e) => {
+        if (e.layerType === 'polyline') {
+            drawnItems.eachLayer(l => { if (l instanceof L.Polyline) drawnItems.removeLayer(l); });
+        }
+        drawnItems.addLayer(e.layer);
+        updateGeoJSONFromLayers();
+    });
+    adminMap.on('draw:edited draw:deleted', updateGeoJSONFromLayers);
+    
+    routeForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!rutaGeoJSON || paradasGeoJSON.length === 0) {
+            showMessage('error', 'Debes dibujar la ruta y marcar al menos una parada.');
+            return;
+        }
+        try {
+            const response = await fetch('/api/rutas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(recolectarDatosFormulario())
+            });
+            const result = await response.json();
+            if (result.success) {
+                showMessage('success', 'Ruta guardada exitosamente.');
+                resetEditorState();
+                cargarRutas();
+            } else { throw new Error(result.message); }
+        } catch (error) { showMessage('error', `Error al guardar: ${error.message}`); }
+    });
+
+    actualizarBtn.addEventListener('click', async () => {
+         if (!rutaGeoJSON || paradasGeoJSON.length === 0) {
+            showMessage('error', 'La ruta debe tener un trazo y al menos una parada.');
+            return;
+        }
+        try {
+            const response = await fetch(`/api/rutas/${rutaEnEdicion.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(recolectarDatosFormulario())
+            });
+            const result = await response.json();
+            if (result.success) {
+                showMessage('success', 'Ruta actualizada exitosamente.');
+                resetEditorState();
+                cargarRutas();
+            } else { throw new Error(result.message); }
+        } catch (error) { showMessage('error', `Error al actualizar: ${error.message}`); }
+    });
+    
+    cancelarBtn.addEventListener('click', resetEditorState);
+    
+    listaRutasContainer.addEventListener('click', (e) => {
+        const target = e.target.closest('button');
+        if (!target) return;
+        if (target.classList.contains('editar-ruta')) iniciarEdicion(target.dataset.id);
+        else if (target.classList.contains('eliminar-ruta')) eliminarRuta(target.dataset.id);
+    });
+
+    // --- INICIALIZACIÓN ---
+    cargarRutas();
 });
-
-/**
- * Función auxiliar para mostrar mensajes al administrador
- * @param {string} type - Tipo de mensaje ('success' o 'error')
- * @param {string} text - Texto del mensaje a mostrar
- */
-function showMessage(type, text) {
-    messageDiv.style.display = 'block';
-    messageDiv.textContent = text;
-    messageDiv.className = type === 'success' ? 'alert alert-success' : 'alert alert-danger';
-
-    // El mensaje se oculta automáticamente después de 4 segundos
-    setTimeout(() => {
-        messageDiv.style.display = 'none';
-    }, 4000);
-}
