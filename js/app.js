@@ -336,6 +336,13 @@ const App = {
     nearbyRadiusKm: 0.3,
     showAccuracyCircle: false
   },
+
+    pickOnMap: {
+    active: false,     // si está en modo “Elegir en el mapa”
+    marker: null,      // marcador temporal arrastrable
+    clickHandler: null // referencia al listener de click del mapa
+  },
+
   proximityCircle: null,
 
   // --- CORRECCIÓN: elementos del DOM inicializados vacíos y luego vinculados en bindElements() ---
@@ -399,6 +406,7 @@ const App = {
     this.bindElements(); // primero vinculamos el DOM
     this.initMap();
     this.updateAuthUI();
+    this.cleanupDrafts();
     this.setupEventListeners();
     await this.fetchAllRouteData();
     this.renderRouteList();
@@ -407,6 +415,15 @@ const App = {
       this.elements.toggleRoutesBtn.disabled = false;
       this.updateToggleButtonText();
     }
+
+    this.elements.toggleTrafficBtn?.addEventListener('click', async () => {
+      if (!this.isAuthenticated()) return this._nudgeGuest('Ver alertas de tráfico');
+        this.cleanupDrafts();                 // ← aquí también
+        await this.fetchTrafficAlerts();
+        this.renderTraffic();
+        this.renderTrafficList();
+    });
+
   },
 
   // --- Crear mapa y capa de tráfico ---
@@ -435,6 +452,41 @@ const App = {
       this.renderTraffic();
       this.renderTrafficList();
     });
+
+        this.$trafficModalEl?.addEventListener('shown.bs.modal', () => {
+      setTimeout(() => this.map.invalidateSize(), 0);
+    });
+    this.$trafficModalEl?.addEventListener('hidden.bs.modal', () => {
+      this._stopPickOnMap();
+      setTimeout(() => this.map.invalidateSize(), 0);
+    });
+
+        // --- REPORT TRAFFIC UI ---
+    this.$trafficModalEl = document.getElementById('trafficModal');
+    this.$trafficForm    = document.getElementById('trafficForm');
+    this.$cancelPickBtn  = document.getElementById('cancelPickBtn');
+    this._trafficModal   = this.$trafficModalEl ? new bootstrap.Modal(this.$trafficModalEl) : null;
+
+    this.$trafficModalEl?.addEventListener('hidden.bs.modal', () => this._stopPickOnMap());
+
+    // Abrir modal (solo logueado)
+    this.elements.reportTrafficBtn?.addEventListener('click', () => {
+      if (!this.isAuthenticated()) return this._nudgeGuest('Reportar tráfico');
+      this.startTrafficReport();
+    });
+
+    // Envío del formulario + cambio de modo ubicación
+    this.$trafficForm?.addEventListener('submit', (e) => this.submitTrafficReport(e));
+    this.$trafficForm?.querySelectorAll('input[name="locMode"]')
+      .forEach(inp => inp.addEventListener('change', (e) => this._onLocModeChange(e)));
+    this.$cancelPickBtn?.addEventListener('click', () => this._stopPickOnMap());
+
+    this.$trafficTypeFilter = document.getElementById('trafficTypeFilter');
+    this.$trafficSevFilter  = document.getElementById('trafficSevFilter');
+    [this.$trafficTypeFilter, this.$trafficSevFilter].forEach(el =>
+      el?.addEventListener('change', () => { this.renderTraffic(); this.renderTrafficList(); })
+    );
+
   },
 
   // --- Carga de datos (local + BD) ---
@@ -1045,12 +1097,6 @@ const App = {
       window.location.href = '/admin.html';
     });
 
-    // Reporte de tráfico
-    this.elements.reportTrafficBtn?.addEventListener('click', () => {
-      if (!this.isAuthenticated()) return this._nudgeGuest('Reportar tráfico');
-      // Nota simple: abre (o abriría) el modal para reportar tráfico.
-      alert('Aquí abrirías tu modal/form para reportar tráfico (solo usuarios).');
-    });
   },
 
     // --- Helper: fetchGeoJSON con tolerancia a fallos ---
@@ -1470,28 +1516,78 @@ const App = {
 
   // --- Descarga alertas de tráfico ---
   // Nota: lee alerts.json, filtra por estado y expiración.
-  async fetchTrafficAlerts() {
-    try {
-      const res = await fetch('./data/traffic/alerts.json', { cache: 'no-store' });
-      const all = await res.json();
+  // Carga alertas: mezcla borradores locales + aprobadas del JSON
+    async fetchTrafficAlerts() {
+      try {
+        // JSON remoto (aprobadas)
+        const res = await fetch('./data/traffic/alerts.json', { cache: 'no-store' }).catch(() => null);
+        const remote = res && res.ok ? await res.json() : [];
+        const now = Date.now();
+
+        const approved = (Array.isArray(remote) ? remote : []).filter(a => {
+          const exp = a.expira ? Date.parse(a.expira) : (now + 3600000); // 1h defecto
+          return a.estado === 'aprobada' && exp > now;
+        });
+
+        // Borradores locales (pendientes)
+        const drafts = JSON.parse(localStorage.getItem('trafficDrafts') || '[]')
+          .filter(a => Date.parse(a.expira || 0) > now);
+
+        // De-dup por id: primero drafts (tienen prioridad)
+        const seen = new Set();
+        const combined = [...drafts, ...approved].filter(a => {
+          if (!a || !a.id) return false;
+          if (seen.has(a.id)) return false;
+          seen.add(a.id);
+          return true;
+        });
+
+        this.traffic.alerts = combined;
+      } catch (e) {
+        console.error('Error cargando alerts.json', e);
+        // Fallback: al menos muestra borradores vigentes
+        const now = Date.now();
+        this.traffic.alerts = JSON.parse(localStorage.getItem('trafficDrafts') || '[]')
+          .filter(a => Date.parse(a.expira || 0) > now);
+      }
+    },
+
+    // Elimina de localStorage los borradores vencidos
+    cleanupDrafts() {
       const now = Date.now();
-      this.traffic.alerts = all.filter(a => {
-        const exp = a.expira ? Date.parse(a.expira) : now + 3600000;
-        return (a.estado === 'aprobada') && (exp > now);
-      });
-    } catch (e) {
-      console.error('Error cargando alerts.json', e);
-      this.traffic.alerts = [];
-    }
+      const key = 'trafficDrafts';
+      const drafts = JSON.parse(localStorage.getItem(key) || '[]')
+        .filter(a => Date.parse(a.expira || 0) > now); // conserva solo vigentes
+      localStorage.setItem(key, JSON.stringify(drafts));
+    },
+
+      // Limpia borradores vencidos en localStorage
+  cleanupDrafts() {
+    const now = Date.now();
+    const key = 'trafficDrafts';
+    const drafts = JSON.parse(localStorage.getItem(key) || '[]')
+      .filter(a => Date.parse(a.expira || 0) > now);
+    localStorage.setItem(key, JSON.stringify(drafts));
   },
+
+
 
   // --- Pintar alertas en el mapa ---
   // Nota: coloca marcadores/círculos por severidad y opcionalmente renderiza segmento de ruta afectado.
-  renderTraffic() {
+    renderTraffic() {
     if (!this.traffic.layer) return;
     this.traffic.layer.clearLayers();
 
-    this.traffic.alerts.forEach(a => {
+    // Filtros
+    const typeSel = this.$trafficTypeFilter?.value || '';
+    const sevSel  = Number(this.$trafficSevFilter?.value || 0);
+    const alerts = (this.traffic.alerts || []).filter(a =>
+      (!typeSel || a.tipo === typeSel) &&
+      (!sevSel  || (Number(a.severidad) || 1) >= sevSel)
+    );
+
+    // Itera sobre alerts filtradas
+    alerts.forEach(a => {
       const sev = Number(a.severidad) || 1;
       const color = sev >= 5 ? '#dc2626' : sev >= 3 ? '#f59e0b' : '#22c55e';
 
@@ -1501,21 +1597,27 @@ const App = {
           weight: 2,
           color: '#111',
           fillColor: color,
-          fillOpacity: 0.85
-        }).bindPopup(`
-          <strong>${(a.tipo || 'Incidente').toUpperCase()}</strong>
+          fillOpacity: 0.85,
+          className: 'traffic-dot'
+        })
+        .bindPopup(
+          `<strong>${(a.tipo || 'Incidente').toUpperCase()}</strong>
           <div>${a.descripcion || ''}</div>
-          <div>Severidad: ${sev}${a.rutaId ? ` · Ruta ${a.rutaId}` : ''}</div>
-        `);
-        m.addTo(this.traffic.layer);
+          <div>Severidad: ${sev}${a.rutaId ? ' · Ruta ' + a.rutaId : ''}</div>`
+        )
+        .addTo(this.traffic.layer);
 
-        if (a.radio && a.radio > 0) {
+        // guarda referencia para usar "pulse" desde la lista
+        a.__marker = m;
+
+        // círculo de alcance (opcional)
+        if (a.radio && Number(a.radio) > 0) {
           L.circle([a.coord.lat, a.coord.lng], {
-            radius: a.radio,
-            color,
-            weight: 2,
-            dashArray: '4 4',
-            fillOpacity: 0.08
+            radius: Number(a.radio),
+            color: '#0ea5e9',
+            weight: 1,
+            fillColor: '#38bdf8',
+            fillOpacity: 0.15
           }).addTo(this.traffic.layer);
         }
       }
@@ -1530,23 +1632,29 @@ const App = {
 
   // --- Lista lateral de alertas ---
   // Nota: ordena por cercanía a mi ubicación y permite centrar el mapa en cada alerta.
-  renderTrafficList() {
-    const ul = this.traffic.listContainer;
-    if (!ul) return;
+    renderTrafficList() {
+      const ul = this.traffic.listContainer;
+      if (!ul) return;
 
-    ul.innerHTML = '';
-    const pos = this.userLocation || null;
+      ul.innerHTML = '';
 
-    const items = this.traffic.alerts
+      // filtros (opcional)
+      const typeSel = this.$trafficTypeFilter?.value || '';
+      const sevSel  = Number(this.$trafficSevFilter?.value || 0);
+      const alerts = (this.traffic.alerts || []).filter(a =>
+        (!typeSel || a.tipo === typeSel) &&
+        (!sevSel  || (Number(a.severidad) || 1) >= sevSel)
+      );
+
+    // referencia para ordenar por cercanía
+    const pos =
+      this.lastUserLatLng ||
+      (this.userLocation ? L.latLng(this.userLocation.lat, this.userLocation.lon) : null);
+
+    const items = alerts
       .map(a => {
         let distKm = null;
-        if (pos && a.coord) {
-          const p1 = L.latLng(pos.lat, pos.lon ?? pos.lng ?? pos.long ?? pos.lon);
-          const p2 = L.latLng(a.coord.lat, a.coord.lng);
-          // Si pos no tenía 'lng', intenta 'lon'
-          const p1Fixed = L.latLng(pos.lat, (pos.lng ?? pos.lon));
-          distKm = p1Fixed.distanceTo(p2) / 1000;
-        }
+        if (pos && a.coord) distKm = pos.distanceTo(L.latLng(a.coord.lat, a.coord.lng)) / 1000;
         return { a, distKm };
       })
       .sort((x, y) => {
@@ -1574,7 +1682,7 @@ const App = {
         <div class="ms-2 text-nowrap"><small>${distTxt}</small></div>
       `;
 
-      li.querySelector('button')?.addEventListener('click', () => {
+      li.querySelector('button').addEventListener('click', () => {
         if (a.coord) this.map.setView([a.coord.lat, a.coord.lng], Math.max(this.map.getZoom(), 15));
       });
 
@@ -1587,37 +1695,225 @@ const App = {
       li.textContent = 'Sin alertas vigentes.';
       ul.appendChild(li);
     }
-  },
 
-  // --- Pintar segmento de ruta afectado por una alerta ---
-  // Nota: carga el route.json de la ruta y dibuja un polyline resaltado (simple).
-  async _renderTrafficSegment(alerta) {
-    const geo = await this.fetchGeoJSON(`./data/${alerta.rutaId}/route.json`);
-    if (!geo) return;
-    const latlngs = this._buildCoverageLoopFromGeoJSON(geo, { connectThreshold: 25, resampleEvery: 8 });
-    if (!latlngs.length) return;
-
-    L.polyline(latlngs, {
-      color: '#e11d48',
-      weight: 6,
-      opacity: 0.6,
-      dashArray: '6 6'
-    }).addTo(this.traffic.layer);
-  },
-
-  // --- Aviso para invitados (nudges) ---
-  // Nota: anima una leyenda para avisar que la función requiere iniciar sesión.
-  _nudgeGuest(featureName = '') {
-    if (this.elements.guestLegend) {
-      this.elements.guestLegend.classList.remove('pulse');
-      // reflow para reiniciar la animación CSS
-      void this.elements.guestLegend.offsetWidth;
-      this.elements.guestLegend.classList.add('pulse');
-    }
-    if (featureName) {
-      alert(`Inicia sesión para usar: ${featureName}.`);
-    }
+    this.map.invalidateSize();
   }
+  ,
+
+    // --- Pintar segmento de ruta afectado por una alerta ---
+    // Nota: carga el route.json de la ruta y dibuja un polyline resaltado (simple).
+    async _renderTrafficSegment(alerta) {
+      const geo = await this.fetchGeoJSON(`./data/${alerta.rutaId}/route.json`);
+      if (!geo) return;
+      const latlngs = this._buildCoverageLoopFromGeoJSON(geo, { connectThreshold: 25, resampleEvery: 8 });
+      if (!latlngs.length) return;
+
+      L.polyline(latlngs, {
+        color: '#e11d48',
+        weight: 6,
+        opacity: 0.6,
+        dashArray: '6 6'
+      }).addTo(this.traffic.layer);
+    },
+
+    // --- Aviso para invitados (nudges) ---
+    // Nota: anima una leyenda para avisar que la función requiere iniciar sesión.
+    _nudgeGuest(featureName = '') {
+      if (this.elements.guestLegend) {
+        this.elements.guestLegend.classList.remove('pulse');
+        // reflow para reiniciar la animación CSS
+        void this.elements.guestLegend.offsetWidth;
+        this.elements.guestLegend.classList.add('pulse');
+      }
+      if (featureName) {
+        alert(`Inicia sesión para usar: ${featureName}.`);
+      }
+    },
+
+      // === Reporte de tráfico: métodos ===
+    _setCoordsRowVisible(show) {
+      const row = this.$trafficForm?.querySelector('#coordsRow');
+      if (!row || !this.$trafficForm) return;
+      row.style.display = show ? '' : 'none';
+      const lat = this.$trafficForm.elements['lat'];
+      const lng = this.$trafficForm.elements['lng'];
+      lat.readOnly = !show; lng.readOnly = !show;
+      lat.required = show;  lng.required = show;
+    },
+
+    _applyMyLocationToForm() {
+      const f = this.$trafficForm; if (!f) return;
+      const my = this.userLocation;
+      if (my) {
+        f.elements['lat'].value = (+my.lat).toFixed(6);
+        f.elements['lng'].value = (+my.lon).toFixed(6);
+      } else {
+        f.elements['lat'].value = '';
+        f.elements['lng'].value = '';
+      }
+      this._setCoordsRowVisible(false); // ocultar inputs en “Mi ubicación”
+    },
+
+    startTrafficReport() {
+      if (!this.$trafficForm) return;
+      const f = this.$trafficForm;
+      f.reset();
+      f.elements['tipo'].value = 'congestion';
+      f.elements['severidad'].value = 3;
+      f.elements['horas'].value = 3;
+
+      // “Mi ubicación” por defecto
+      f.querySelector('#locMyPos')?.setAttribute('checked', 'checked');
+      if (f.querySelector('#locMyPos')) f.querySelector('#locMyPos').checked = true;
+      this._applyMyLocationToForm();
+
+      this.$cancelPickBtn?.classList.add('d-none');
+      this._stopPickOnMap();
+      this._trafficModal?.show();
+    },
+
+    _onLocModeChange(e) {
+      const mode = e?.target?.value;
+      if (mode === 'mypos') {
+        this.$cancelPickBtn?.classList.add('d-none');
+        this._stopPickOnMap();
+        this._applyMyLocationToForm();
+      } else {
+        this.$cancelPickBtn?.classList.remove('d-none');
+        this._setCoordsRowVisible(true);
+        this._startPickOnMap();
+      }
+    },
+
+    _startPickOnMap() {
+      if (this.pickOnMap.active) return;
+      this.pickOnMap.active = true;
+
+      const handler = (ev) => {
+        const { lat, lng } = ev.latlng;
+        if (!this.pickOnMap.marker) {
+          this.pickOnMap.marker = L.marker([lat, lng], { draggable: true }).addTo(this.map);
+          this.pickOnMap.marker.on('dragend', () => {
+            const p = this.pickOnMap.marker.getLatLng();
+            this._fillFormCoords(p.lat, p.lng);
+          });
+        } else {
+          this.pickOnMap.marker.setLatLng([lat, lng]);
+        }
+        this._fillFormCoords(lat, lng);
+      };
+
+      this.map.getContainer().style.cursor = 'crosshair';
+      this.map.on('click', handler);
+      this.pickOnMap.clickHandler = handler;
+    },
+
+    _stopPickOnMap() {
+      if (!this.pickOnMap.active) return;
+      this.pickOnMap.active = false;
+
+      this.map.getContainer().style.cursor = '';
+      if (this.pickOnMap.clickHandler) {
+        this.map.off('click', this.pickOnMap.clickHandler);
+        this.pickOnMap.clickHandler = null;
+      }
+      if (this.pickOnMap.marker) {
+        this.map.removeLayer(this.pickOnMap.marker);
+        this.pickOnMap.marker = null;
+      }
+    },
+
+    _fillFormCoords(lat, lng) {
+      if (!this.$trafficForm) return;
+      this.$trafficForm.elements['lat'].value = (+lat).toFixed(6);
+      this.$trafficForm.elements['lng'].value = (+lng).toFixed(6);
+    },
+
+    submitTrafficReport(e) {
+      if (!this.canReportNow()) { this.showToast('Espera un momento antes de enviar otro reporte.'); return; }
+      e.preventDefault();
+      if (!this.$trafficForm) return;
+      const f = this.$trafficForm;
+
+      const tipo = f.elements['tipo'].value || 'otro';
+      const severidad = Math.min(5, Math.max(1, +f.elements['severidad'].value || 1));
+      const descripcion = f.elements['descripcion'].value?.trim() || '';
+      const horas = Math.min(24, Math.max(1, +f.elements['horas'].value || 3));
+      const radio = f.elements['radio'].value ? Math.max(0, +f.elements['radio'].value) : null;
+
+      const mode = f.elements['locMode'].value;
+      let lat, lng;
+
+      if (!this.canReportNow()) {
+        this.showToast('Espera un momento antes de enviar otro reporte.');
+        return;
+      }
+
+
+      if (mode === 'mypos') {
+        if (!this.userLocation) {
+          alert('No tengo tu ubicación aún. Activa el seguimiento de ubicación.');
+          return;
+        }
+        lat = this.userLocation.lat;
+        lng = this.userLocation.lon;
+      } else {
+        lat = parseFloat(f.elements['lat'].value);
+        lng = parseFloat(f.elements['lng'].value);
+        if (!isFinite(lat) || !isFinite(lng)) {
+          alert('Haz click en el mapa para fijar el punto.');
+          return;
+        }
+      }
+
+      const now = new Date();
+      const alertObj = {
+        id: `u-${now.getTime()}`,
+        tipo, severidad, descripcion,
+        coord: { lat, lng },
+        radio: radio || undefined,
+        inicio: now.toISOString(),
+        expira: new Date(now.getTime() + horas * 3600 * 1000).toISOString(),
+        fuente: 'usuario',
+        estado: 'pendiente'
+      };
+
+      // Guarda local y muestra al instante
+      const key = 'trafficDrafts';
+      const drafts = JSON.parse(localStorage.getItem(key) || '[]');
+      drafts.push(alertObj);
+      localStorage.setItem(key, JSON.stringify(drafts));
+
+      this.traffic.alerts = [alertObj, ...(this.traffic.alerts || [])];
+      this.renderTraffic();
+      this.renderTrafficList();
+
+      this._trafficModal?.hide();
+      this._stopPickOnMap();
+      this.showToast('¡Gracias! Tu alerta quedó como "pendiente".');
+
+      this.markReportNow();
+
+    },
+
+    showToast(msg) {
+      const el = document.getElementById('appToast');
+      const body = document.getElementById('appToastMsg');
+      if (!el || !body) return;
+      body.textContent = msg;
+      (new bootstrap.Toast(el)).show();
+    },
+
+    canReportNow() {
+      const last = Number(localStorage.getItem('trafficLastReportTs') || 0);
+      const MIN = 2 * 60 * 1000; // 2 min
+      return Date.now() - last > MIN;
+    },
+    markReportNow() {
+      localStorage.setItem('trafficLastReportTs', String(Date.now()));
+    },
+
+
 }; // <- Cierre del objeto App
 
 // --- Bootstrap del módulo ---

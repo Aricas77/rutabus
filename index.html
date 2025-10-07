@@ -91,6 +91,24 @@
                 <ul id="trafficList" class="list-group mt-2"></ul>
             </div>
 
+            <div class="d-flex gap-2 mt-2">
+                <select id="trafficTypeFilter" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    <option value="congestion">Congestión</option>
+                    <option value="accidente">Accidente</option>
+                    <option value="obra">Obra</option>
+                    <option value="bloqueo">Bloqueo</option>
+                    <option value="inundacion">Inundación</option>
+                    <option value="otro">Otro</option>
+                </select>
+                <select id="trafficSevFilter" class="form-select form-select-sm">
+                    <option value="">S1–S5</option>
+                    <option value="3">S≥3</option>
+                    <option value="5">S≥5</option>
+                </select>
+            </div>
+
+
             <!-- Reportar tráfico -->
             <div class="mt-2">
                 <button id="reportTrafficBtn" class="btn btn-danger w-100 requires-auth" disabled>
@@ -118,6 +136,81 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js" defer></script>
     <!-- Script principal de la aplicación -->
     <script src="./js/app.js" defer></script>
+
+        <!-- Modal: Reportar Tráfico -->
+    <div class="modal fade" id="trafficModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form class="modal-content" id="trafficForm">
+        <div class="modal-header">
+            <h5 class="modal-title">Reportar tráfico</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body">
+            <div class="mb-2">
+            <label class="form-label">Tipo de incidente</label>
+            <select class="form-select" name="tipo" required>
+                <option value="congestion">Congestión</option>
+                <option value="accidente">Accidente</option>
+                <option value="obra">Obra</option>
+                <option value="bloqueo">Bloqueo</option>
+                <option value="inundacion">Inundación</option>
+                <option value="otro">Otro</option>
+            </select>
+            </div>
+            <div class="mb-2">
+            <label class="form-label">Severidad (1-5)</label>
+            <input type="number" name="severidad" class="form-control" min="1" max="5" value="3" required>
+            </div>
+            <div class="mb-2">
+            <label class="form-label">Descripción</label>
+            <input type="text" name="descripcion" class="form-control" maxlength="140" placeholder="Ej. Carga pesada en Lázaro Cárdenas">
+            </div>
+            <div class="mb-2">
+            <label class="form-label">Vigencia (horas)</label>
+            <input type="number" name="horas" class="form-control" min="1" max="24" value="3" required>
+            </div>
+
+            <hr class="my-3">
+
+            <label class="form-label d-block">Ubicación del incidente</label>
+            <div class="btn-group w-100 mb-2" role="group">
+            <input class="btn-check" type="radio" name="locMode" id="locMyPos" value="mypos" checked>
+            <label class="btn btn-outline-primary" for="locMyPos">Mi ubicación</label>
+            <input class="btn-check" type="radio" name="locMode" id="locPick" value="pick">
+            <label class="btn btn-outline-primary" for="locPick">Elegir en el mapa</label>
+            </div>
+
+            <div class="row g-2" id="coordsRow" style="display:none">
+            <div class="col"><input type="number" step="any" name="lat" class="form-control" placeholder="lat"></div>
+            <div class="col"><input type="number" step="any" name="lng" class="form-control" placeholder="lng"></div>
+            <div class="col-12">
+                <label class="form-label mt-2">Radio (m) opcional</label>
+                <input type="number" name="radio" class="form-control" min="0" step="10" placeholder="Ej. 120">
+            </div>
+            <div class="form-text">Con “Elegir en el mapa”, haz click para fijar el punto.</div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" id="cancelPickBtn" class="btn btn-outline-secondary d-none">Salir del mapa</button>
+            <button type="submit" class="btn btn-danger">Guardar alerta</button>
+        </div>
+        </form>
+    </div>
+    </div>
+
+    <div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
+    <div id="appToast" class="toast" role="alert" data-bs-delay="2200">
+        <div class="toast-header">
+        <strong class="me-auto">Rutabús</strong>
+        <small class="text-muted">Ahora</small>
+        <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="appToastMsg"></div>
+    </div>
+    </div>
+
 
 </body>
 </html>
