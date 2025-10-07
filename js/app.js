@@ -308,48 +308,36 @@ const RUTA_INFO = {
     "152": { horaInicio: "5:30", horaFinal: "21:45", distanciaKm: 27, duracionMin: 108, mujerSegura: false, foto: "./data/152/152.png" },
 };
 
-
-
-// RUTABUS - app.js (Parte 1)
-// Correcciones clave: llaves y comas correctas, sin duplicados fuera de App, renderTraffic() arreglado.
-// Cada función incluye una nota breve de lo que hace.
-
 const App = {
   // --- Propiedades y Estado ---
-  // Nota: variables principales del estado de la app (mapa, capas activas, ubicación de usuario, etc.)
+  // Nota: variables principales del estado de la app (mapa, capas activas, ubicación, etc.)
   map: null,
-  activeLayers: {},
-  userLocation: null,
+  activeLayers: {},             // { [rutaId]: { routeLayer, stopLayer, routeLatLngs, selection } }
+  userLocation: null,           // { lat, lon, accuracy? }
   isShowingAll: true,
   isLocationActive: false,
-  routeData: [],
+  routeData: [],                // [{ id, stop, name, geojson, dbParadas?, local }]
   userLocationMarker: null,
-  activeRoute: null,
+  activeRoute: null,            // polyline invisible usada por la animación del bus
   selectionDefaults: { start: null, end: null, segmentLayer: null },
   dbRoutes: [],
   watchId: null,
   accuracyCircle: null,
   followUser: true,
   lastUserLatLng: null,
-  routePathCache: {},
-  settings: {
-    nearbyRadiusKm: 0.3,
-    showAccuracyCircle: false
-  },
+  routePathCache: {},           // cache de latlngs re-muestreados por ruta
+  settings: { nearbyRadiusKm: 0.3, showAccuracyCircle: false },
 
-    pickOnMap: {
-    active: false,     // si está en modo “Elegir en el mapa”
-    marker: null,      // marcador temporal arrastrable
-    clickHandler: null // referencia al listener de click del mapa
-  },
+  // Modo “elegir punto en mapa” (para UI de tráfico u otras funciones)
+  pickOnMap: { active: false, marker: null, clickHandler: null },
 
   proximityCircle: null,
 
-  // --- CORRECCIÓN: elementos del DOM inicializados vacíos y luego vinculados en bindElements() ---
+  // --- Elementos del DOM (se rellenan en bindElements) ---
   elements: {},
 
-  // --- Íconos ---
-  // Nota: define los íconos usados por Leaflet (paradas, ubicación, bus, etc.)
+  // --- Íconos Leaflet ---
+  // Nota: define íconos para paradas, inicio/fin, ubicación y bus.
   icons: {
     parada: L.icon({
       iconUrl: "https://api.iconify.design/mdi/bus-stop.svg?color=%230d6efd",
@@ -374,7 +362,7 @@ const App = {
   },
 
   // --- Vinculación de elementos del DOM ---
-  // Nota: busca y guarda referencias a los elementos HTML que la app usa.
+  // Nota: busca y guarda referencias a nodos del HTML.
   bindElements() {
     this.elements = {
       rutasLista: document.getElementById('rutasLista'),
@@ -392,7 +380,6 @@ const App = {
       guestLegend: document.getElementById('guest-legend'),
       reportTrafficBtn: document.getElementById('reportTrafficBtn'),
       toggleTrafficBtn: document.getElementById('toggleTrafficBtn'),
-      // Opcionales: si existen en el HTML, quedarán disponibles; si no, no truenan por el uso de ?.
       menuIcon: document.getElementById('menuIcon'),
       adminMenu: document.getElementById('adminMenu'),
       addRouteBtn: document.getElementById('addRouteBtn'),
@@ -401,33 +388,32 @@ const App = {
   },
 
   // --- Inicialización ---
-  // Nota: prepara la app; crea el mapa, vincula UI, descarga datos de rutas y habilita botones.
+  // Nota: prepara la app (DOM, mapa, auth UI, listeners, datos iniciales).
   async init() {
-    this.bindElements(); // primero vinculamos el DOM
+    this.bindElements();
     this.initMap();
     this.updateAuthUI();
-    this.cleanupDrafts();
     this.setupEventListeners();
+
     await this.fetchAllRouteData();
     this.renderRouteList();
-    // Habilita el botón tras cargar
+
     if (this.elements.toggleRoutesBtn) {
       this.elements.toggleRoutesBtn.disabled = false;
       this.updateToggleButtonText();
     }
 
+    // Botón para ver alertas de tráfico (si existe)
     this.elements.toggleTrafficBtn?.addEventListener('click', async () => {
       if (!this.isAuthenticated()) return this._nudgeGuest('Ver alertas de tráfico');
-        this.cleanupDrafts();                 // ← aquí también
-        await this.fetchTrafficAlerts();
-        this.renderTraffic();
-        this.renderTrafficList();
+      await this.fetchTrafficAlerts();
+      this.renderTraffic();
+      this.renderTrafficList();
     });
-
   },
 
   // --- Crear mapa y capa de tráfico ---
-  // Nota: crea el mapa, define listeners de zoom/drag, y prepara contenedores de tráfico.
+  // Nota: instancia Leaflet, listeners de zoom/drag y grupo de tráfico.
   initMap() {
     this.map = L.map("map").setView([19.5438, -96.9103], 13);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -441,72 +427,33 @@ const App = {
       }
     });
 
-    // Capa y lista de tráfico
+    // Capa/lista de tráfico
     this.traffic.layer = L.layerGroup().addTo(this.map);
     this.traffic.listContainer = this.elements.trafficList;
-
-    // Botón para ver alertas de tráfico
-    this.elements.toggleTrafficBtn?.addEventListener('click', async () => {
-      if (!this.isAuthenticated()) return this._nudgeGuest('Ver alertas de tráfico');
-      await this.fetchTrafficAlerts();
-      this.renderTraffic();
-      this.renderTrafficList();
-    });
-
-        this.$trafficModalEl?.addEventListener('shown.bs.modal', () => {
-      setTimeout(() => this.map.invalidateSize(), 0);
-    });
-    this.$trafficModalEl?.addEventListener('hidden.bs.modal', () => {
-      this._stopPickOnMap();
-      setTimeout(() => this.map.invalidateSize(), 0);
-    });
-
-        // --- REPORT TRAFFIC UI ---
-    this.$trafficModalEl = document.getElementById('trafficModal');
-    this.$trafficForm    = document.getElementById('trafficForm');
-    this.$cancelPickBtn  = document.getElementById('cancelPickBtn');
-    this._trafficModal   = this.$trafficModalEl ? new bootstrap.Modal(this.$trafficModalEl) : null;
-
-    this.$trafficModalEl?.addEventListener('hidden.bs.modal', () => this._stopPickOnMap());
-
-    // Abrir modal (solo logueado)
-    this.elements.reportTrafficBtn?.addEventListener('click', () => {
-      if (!this.isAuthenticated()) return this._nudgeGuest('Reportar tráfico');
-      this.startTrafficReport();
-    });
-
-    // Envío del formulario + cambio de modo ubicación
-    this.$trafficForm?.addEventListener('submit', (e) => this.submitTrafficReport(e));
-    this.$trafficForm?.querySelectorAll('input[name="locMode"]')
-      .forEach(inp => inp.addEventListener('change', (e) => this._onLocModeChange(e)));
-    this.$cancelPickBtn?.addEventListener('click', () => this._stopPickOnMap());
-
-    this.$trafficTypeFilter = document.getElementById('trafficTypeFilter');
-    this.$trafficSevFilter  = document.getElementById('trafficSevFilter');
-    [this.$trafficTypeFilter, this.$trafficSevFilter].forEach(el =>
-      el?.addEventListener('change', () => { this.renderTraffic(); this.renderTrafficList(); })
-    );
-
   },
 
   // --- Carga de datos (local + BD) ---
-  // Nota: descarga y combina rutas locales (carpeta /data) y rutas desde la API /api/rutas.
+  // Nota: combina rutas de /data y /api/rutas y las ordena por id.
   async fetchAllRouteData() {
-    if (this.elements.toggleRoutesBtn) {
+     if (this.elements.toggleRoutesBtn) {
       this.elements.toggleRoutesBtn.textContent = 'Cargando datos de rutas...';
     }
 
-    // 1) Rutas locales según tu arreglo RUTAS
-    const localPromises = (RUTAS || []).map(rutaInfo =>
+    // TOMAR RUTAS desde el ámbito correcto (no window.RUTAS)
+    const srcRutas = (typeof RUTAS !== 'undefined' && Array.isArray(RUTAS)) ? RUTAS : [];
+
+    // 1) Rutas locales
+    const localPromises = srcRutas.map(rutaInfo =>
       this.fetchGeoJSON(`./data/${rutaInfo.id}/route.json`)
         .then(geojson => ({ ...rutaInfo, geojson, local: true }))
+        .catch(() => ({ ...rutaInfo, geojson: null, local: true }))
     );
 
-    // 2) Rutas desde la base de datos
-    let dbRoutesPromise = fetch('/api/rutas')
-      .then(response => response.json())
+    // 2) Rutas desde la BD
+    const dbRoutesPromise = fetch('/api/rutas')
+      .then(r => r.json())
       .then(data => {
-        if (data.success && data.rutas) {
+        if (data?.success && Array.isArray(data.rutas)) {
           return data.rutas.map(ruta => ({
             id: ruta.id,
             stop: ruta.stop,
@@ -518,26 +465,28 @@ const App = {
         }
         return [];
       })
-      .catch(error => {
-        console.error('Error al cargar rutas de la base de datos:', error);
+      .catch(err => {
+        console.error('Error al cargar rutas de la base de datos:', err);
         return [];
       });
 
-    // 3) Combinar
     const [localRoutes, dbRoutes] = await Promise.all([
       Promise.all(localPromises),
       dbRoutesPromise
     ]);
 
+    // si no hubo RUTAS locales, avisa en consola (debug)
+    if (!srcRutas.length) {
+      console.warn('[RUTABUS] No hay RUTAS locales definidas (typeof RUTAS === "undefined").');
+    }
+
     this.routeData = [...localRoutes, ...dbRoutes].sort((a, b) => a.id.localeCompare(b.id));
 
-    if (this.elements.toggleRoutesBtn) {
-      this.updateToggleButtonText();
-    }
+    if (this.elements.toggleRoutesBtn) this.updateToggleButtonText();
   },
 
-  // --- Obtener ubicación actual (una sola vez) ---
-  // Nota: pide geolocalización una sola vez; coloca un marcador y centra el mapa.
+  // --- Obtener ubicación actual (una vez) ---
+
   getUserLocation() {
     if (!this.isAuthenticated()) { this._nudgeGuest('Mi ubicación'); return Promise.reject(); }
     const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
@@ -548,20 +497,22 @@ const App = {
         return reject(new Error("Geolocation not supported"));
       }
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          this.userLocation = { lat: position.coords.latitude, lon: position.coords.longitude };
+        (pos) => {
+          this.userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
           const userLatLng = [this.userLocation.lat, this.userLocation.lon];
+
           if (this.userLocationMarker) this.map.removeLayer(this.userLocationMarker);
           this.userLocationMarker = L.marker(userLatLng, { icon: this.icons.ubicacion })
             .addTo(this.map)
             .bindPopup("<b>¡Estás aquí!</b>")
             .openPopup();
+
           this.map.setView(userLatLng, 15);
           resolve();
         },
-        (error) => {
+        (err) => {
           alert("No se pudo obtener tu ubicación. Asegúrate de haber concedido los permisos.");
-          reject(error);
+          reject(err);
         },
         options
       );
@@ -569,16 +520,17 @@ const App = {
   },
 
   // --- Seguir ubicación en vivo ---
-  // Nota: alterna entre seguir/no seguir la ubicación en tiempo real (watchPosition/clearWatch).
+  // Nota: alterna seguimiento con watchPosition y re-render de rutas cercanas.
   async toggleUserLocation() {
     if (!this.isAuthenticated()) return this._nudgeGuest('Mi ubicación');
+
     this.isLocationActive = !this.isLocationActive;
     this.elements.locationBtn?.classList.toggle('active', this.isLocationActive);
     this.elements.locationBtn?.setAttribute('aria-pressed', this.isLocationActive ? 'true' : 'false');
     if (this.elements.locationBtn) {
-      this.elements.locationBtn.title = this.isLocationActive ?
-        'Dejar de seguir mi ubicación' :
-        'Seguir mi ubicación en tiempo real';
+      this.elements.locationBtn.title = this.isLocationActive
+        ? 'Dejar de seguir mi ubicación'
+        : 'Seguir mi ubicación en tiempo real';
     }
 
     if (this.isLocationActive) {
@@ -594,7 +546,7 @@ const App = {
   },
 
   // --- Iniciar seguimiento en vivo ---
-  // Nota: usa watchPosition para actualizar círculo/marker y re-render de rutas cercanas.
+  // Nota: crea un watchPosition y actualiza marcador/círculos.
   startLiveLocation() {
     if (!navigator.geolocation) {
       alert('La geolocalización no es compatible con tu navegador.');
@@ -612,7 +564,7 @@ const App = {
   },
 
   // --- Detener seguimiento en vivo ---
-  // Nota: limpia watchPosition, marcador, círculos y estado relacionados a la ubicación.
+  // Nota: limpia watchPosition, marcador y círculos de proximidad.
   stopLiveLocation() {
     if (this.watchId !== null) {
       navigator.geolocation.clearWatch(this.watchId);
@@ -635,7 +587,7 @@ const App = {
   },
 
   // --- Callback de ubicación exitosa ---
-  // Nota: actualiza marcador, círculo de proximidad y centra el mapa si followUser está activo.
+  // Nota: actualiza marcador, círculo y centra el mapa si followUser está activo.
   _onLocationSuccess(position) {
     const { latitude, longitude, accuracy } = position.coords;
     this.userLocation = { lat: latitude, lon: longitude, accuracy };
@@ -653,10 +605,7 @@ const App = {
     const radiusMeters = this.getCurrentNearbyRadiusKm() * 1000;
     if (!this.proximityCircle) {
       this.proximityCircle = L.circle(latlng, {
-        radius: radiusMeters,
-        color: '#1d4ed8',
-        weight: 2,
-        fillOpacity: 0.08
+        radius: radiusMeters, color: '#1d4ed8', weight: 2, fillOpacity: 0.08
       }).addTo(this.map);
     } else {
       this.proximityCircle.setLatLng(latlng);
@@ -679,12 +628,12 @@ const App = {
   },
 
   // --- Callback de error de ubicación ---
-  // Nota: informa el error, apaga seguimiento y restaura UI.
+  // Nota: avisa al usuario y restaura UI.
   _onLocationError(err) {
     console.warn('[RUTABUS] Geolocalización falló:', err);
-    const msg = err?.code === 1 ?
-      'Permite el acceso a la ubicación para poder mostrarte en el mapa.' :
-      'No se pudo obtener tu ubicación. Inténtalo de nuevo.';
+    const msg = err?.code === 1
+      ? 'Permite el acceso a la ubicación para poder mostrarte en el mapa.'
+      : 'No se pudo obtener tu ubicación. Inténtalo de nuevo.';
     alert(msg);
     this.isLocationActive = false;
     this.elements.locationBtn?.classList.remove('active');
@@ -697,7 +646,7 @@ const App = {
   },
 
   // --- Render de lista de rutas ---
-  // Nota: filtra por búsqueda y/o cercanía y pinta la lista de rutas interactiva.
+  // Nota: filtra por búsqueda y/o cercanía y pinta la lista interactiva.
   renderRouteList() {
     const query = this.elements.buscador?.value || '';
     const normalizedQuery = this.normalizeString(query);
@@ -778,8 +727,8 @@ const App = {
     this.elements.rutasLista?.appendChild(fragment);
   },
 
-  // --- Texto del botón alternar cercanas/todas ---
-  // Nota: ajusta el texto del botón según el estado de filtros (cercanas vs todas).
+    // --- Texto botón cercanas/todas ---
+  // Nota: ajusta el texto del botón según filtro activo.
   updateToggleButtonText() {
     if (!this.elements.toggleRoutesBtn) return;
     if (!navigator.geolocation) {
@@ -787,40 +736,38 @@ const App = {
       this.elements.toggleRoutesBtn.disabled = true;
       return;
     }
-    this.elements.toggleRoutesBtn.textContent = this.isShowingAll ?
-      'Mostrar Solo Rutas Cercanas' :
-      'Mostrar Todas las Rutas';
+    this.elements.toggleRoutesBtn.textContent =
+      this.isShowingAll ? 'Mostrar Solo Rutas Cercanas' : 'Mostrar Todas las Rutas';
   },
 
-    // --- ¿Ruta cercana a mi ubicación? ---
-  // Nota: revisa si algún punto del GeoJSON cae dentro del radio cercano actual.
+  // --- ¿Ruta cercana a mi ubicación? ---
+  // Nota: verifica si algún punto de la ruta cae dentro del radio.
   isRouteNearby(ruta, userLoc, radiusKm) {
-    if (!ruta.geojson?.features?.[0]?.geometry?.coordinates) return false;
+    if (!ruta?.geojson?.features?.[0]?.geometry?.coordinates) return false;
     const coordinates = ruta.geojson.features[0].geometry.coordinates;
     for (const point of coordinates) {
-      const actualPoint = Array.isArray(point[0]) ? point[0] : point;
-      const pointLoc = { lon: actualPoint[0], lat: actualPoint[1] };
-      if (this.getDistanceInKm(userLoc, pointLoc) <= radiusKm) return true;
+      const p = Array.isArray(point[0]) ? point[0] : point;
+      const loc = { lon: p[0], lat: p[1] };
+      if (this.getDistanceInKm(userLoc, loc) <= radiusKm) return true;
     }
     return false;
   },
 
-  // --- Haversine simplificado ---
-  // Nota: calcula distancia aproximada en km entre dos coordenadas (lat/lon).
-  getDistanceInKm(coords1, coords2) {
+  // --- Distancia Haversine simplificada ---
+  // Nota: devuelve distancia en km entre dos {lat,lon}.
+  getDistanceInKm(a, b) {
     const R = 6371;
-    const dLat = (coords2.lat - coords1.lat) * Math.PI / 180;
-    const dLon = (coords2.lon - coords1.lon) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) ** 2 +
-      Math.cos(coords1.lat * Math.PI / 180) *
-      Math.cos(coords2.lat * Math.PI / 180) *
-      Math.sin(dLon / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const dLat = (b.lat - a.lat) * Math.PI / 180;
+    const dLon = (b.lon - a.lon) * Math.PI / 180;
+    const A = Math.sin(dLat/2)**2 +
+      Math.cos(a.lat*Math.PI/180) * Math.cos(b.lat*Math.PI/180) *
+      Math.sin(dLon/2)**2;
+    const c = 2 * Math.atan2(Math.sqrt(A), Math.sqrt(1 - A));
     return R * c;
   },
 
   // --- Radio dinámico por zoom ---
-  // Nota: convierte zoom en un radio en km para filtrar rutas cercanas.
+  // Nota: convierte zoom de mapa en radio (km) para filtrar rutas cercanas.
   getCurrentNearbyRadiusKm() {
     if (this.settings?.nearbyRadiusKm != null) return this.settings.nearbyRadiusKm;
     const z = this.map?.getZoom() ?? 15;
@@ -832,8 +779,8 @@ const App = {
     return 1.2;
   },
 
-  // --- Alternar una ruta (on/off) ---
-  // Nota: si ya está activa, la quita; si no, la carga (línea, paradas y animación).
+  // --- Alternar ruta (on/off) ---
+  // Nota: activa/desactiva una ruta en el mapa con su animación y paradas.
   async toggleRuta(buttonEl) {
     const rutaId = buttonEl.dataset.ruta;
     const listItemEl = buttonEl.closest('.list-group-item');
@@ -845,8 +792,8 @@ const App = {
     }
   },
 
-  // --- Agregar ruta al mapa ---
-  // Nota: dibuja la polyline de la ruta, carga paradas, calcula trayecto y arranca animación del "carrito".
+  // --- Agregar ruta ---
+  // Nota: pinta polyline, cachea latlngs re-muestreados, dibuja paradas y anima bus.
   async addRoute(rutaId, stopId, buttonEl, listItemEl) {
     buttonEl?.classList.add('active');
     listItemEl?.classList.add('active');
@@ -862,41 +809,31 @@ const App = {
     const geoRuta = ruta.geojson;
     let geoStops = null;
 
-    // Si la ruta es local, pedimos stops por archivo; si es de BD, ya vienen en el objeto.
+    // Paradas: local por archivo o de BD incluidas
     if (ruta.local) {
       const stopsUrl = `./data/${rutaId}/route_${stopId}_stops.geojson`;
       geoStops = await this.fetchGeoJSON(stopsUrl);
     } else {
-      geoStops = {
-        type: "FeatureCollection",
-        features: ruta.dbParadas || []
-      };
+      geoStops = { type: "FeatureCollection", features: ruta.dbParadas || [] };
     }
 
-    // Dibuja la polyline de la ruta
+    // Polyline de ruta
     if (geoRuta) {
       const routeLayer = L.geoJSON(geoRuta, { style: { color: "green", weight: 4 } }).addTo(this.map);
       this.activeLayers[rutaId].routeLayer = routeLayer;
 
-      // Calcula puntos muestreados para animación fluida
       let latlngs = this.routePathCache[rutaId];
       if (!latlngs) {
-        latlngs = this._buildCoverageLoopFromGeoJSON(geoRuta, {
-          connectThreshold: 25,
-          resampleEvery: 8
-        });
+        latlngs = this._buildCoverageLoopFromGeoJSON(geoRuta, { connectThreshold: 25, resampleEvery: 8 });
         this.routePathCache[rutaId] = latlngs;
       }
       this.activeLayers[rutaId].routeLatLngs = latlngs;
 
-      // Ajusta el mapa a la ruta
       const bounds = L.latLngBounds(latlngs);
-      if (bounds.isValid()) {
-        this.map.fitBounds(bounds, { padding: [20, 20] });
-      }
+      if (bounds.isValid()) this.map.fitBounds(bounds, { padding: [20, 20] });
     }
 
-    // Inicia animación del bus sobre la ruta base (invisible, solo para path)
+    // Animación base (camino completo)
     const baseLatLngs = this.activeLayers[rutaId]?.routeLatLngs;
     if (baseLatLngs && baseLatLngs.length >= 2) {
       if (this.activeRoute) {
@@ -905,16 +842,13 @@ const App = {
         this.activeRoute = null;
       }
       this.activeRoute = L.polyline(baseLatLngs, { opacity: 0, weight: 0 }).addTo(this.map);
-      // Nota simple: esta función hace que funcione la animación del carrito recorriendo la ruta.
-      this.bus.start(this.activeRoute, { speed: 5000, loop: true, fitBounds: false });
-    } else {
-      console.warn('[RUTABUS] No se pudo construir latlngs para animar el bus.');
+      // Nota rápida: anima el “carrito” sobre la ruta completa.
+      this.bus.start(this.activeRoute, { speed: 1000, loop: true, fitBounds: false });
     }
 
-    // Dibuja paradas
+    // Paradas
     if (geoStops && geoStops.features?.length > 0) {
       const stopLayer = L.geoJSON(geoStops, {
-        // Nota simple: cada parada se pinta como un marcador y se puede seleccionar para inicio/destino.
         pointToLayer: (feature, latlng) => {
           const m = L.marker(latlng, { icon: this.icons.parada });
           const name = feature?.properties?.name || "Sin nombre";
@@ -928,19 +862,20 @@ const App = {
           return m;
         }
       }).addTo(this.map);
+
       this.activeLayers[rutaId].stopLayer = stopLayer;
       this.activeLayers[rutaId].selection = { start: null, end: null, segmentLayer: null };
     }
 
-    // Si no hubo datos válidos, revierte
+    // Si no hay datos válidos
     if (!geoRuta && (!geoStops || !geoStops.features?.length)) {
       alert(`No se pudo mostrar la ruta ${rutaId}. Los datos parecen estar incompletos.`);
       this.removeRoute(rutaId, buttonEl, listItemEl);
     }
   },
 
-  // --- Quitar ruta del mapa ---
-  // Nota: elimina polyline, paradas y detiene la animación si ya no quedan rutas activas.
+  // --- Quitar ruta ---
+  // Nota: limpia polyline, paradas y animación si ya no quedan rutas activas.
   removeRoute(rutaId, buttonEl, listItemEl) {
     const entry = this.activeLayers[rutaId];
     if (entry?.selection) this._resetSelection(rutaId);
@@ -963,8 +898,8 @@ const App = {
     }
   },
 
-  // --- Actualiza UI según autenticación ---
-  // Nota: muestra/oculta botones para invitados/usuarios y habilita/deshabilita acciones.
+  // --- UI por autenticación ---
+  // Nota: muestra/oculta botones y habilita/deshabilita acciones para invitado/usuario.
   updateAuthUI() {
     const userString = localStorage.getItem('rutabus_user');
     const authed = !!userString;
@@ -1016,22 +951,22 @@ const App = {
   },
 
   // --- Cerrar sesión ---
-  // Nota: limpia localStorage y recarga la página para reiniciar el estado.
+  // Nota: borra usuario de localStorage y recarga.
   logout() {
     localStorage.removeItem('rutabus_user');
     window.location.reload();
   },
 
   // --- Listeners de UI ---
-  // Nota: conecta eventos de clic, input, teclado y navegación del panel/admin.
+  // Nota: conecta clics, inputs y toggles de la interfaz.
   setupEventListeners() {
-    // Lista de rutas (toggle de cada ruta)
+    // Toggle de rutas desde la lista
     this.elements.rutasLista?.addEventListener("click", (e) => {
       const btn = e.target.closest(".ruta-btn");
       if (btn) this.toggleRuta(btn);
     });
 
-    // Buscador (bloquea si no hay sesión)
+    // Buscador (solo con sesión)
     this.elements.buscador?.addEventListener('focus', () => {
       if (!this.isAuthenticated()) {
         this._nudgeGuest('Buscar rutas');
@@ -1078,7 +1013,7 @@ const App = {
       this.toggleUserLocation();
     });
 
-    // Icono/menú admin
+    // Menú admin
     this.elements.menuIcon?.addEventListener('click', (e) => {
       e.stopPropagation();
       const menu = this.elements.adminMenu;
@@ -1096,24 +1031,20 @@ const App = {
       e.preventDefault();
       window.location.href = '/admin.html';
     });
-
   },
 
-    // --- Helper: fetchGeoJSON con tolerancia a fallos ---
-  // Nota: trae un GeoJSON por URL y devuelve null si está vacío o falla.
+    // --- Helpers de red / texto / auth ---
+  // Nota: descarga un GeoJSON y devuelve null si no tiene features válidas.
   async fetchGeoJSON(url) {
     try {
       const res = await fetch(url, { cache: "no-cache" });
       if (!res.ok) return null;
       const data = await res.json();
       return (data && Array.isArray(data.features) && data.features.length > 0) ? data : null;
-    } catch (error) {
-      return null;
-    }
+    } catch { return null; }
   },
 
-  // --- Helper: normalizar texto ---
-  // Nota: quita acentos y pasa a minúsculas para búsquedas más amigables.
+  // Nota: normaliza texto (minúsculas y sin acentos) para búsquedas.
   normalizeString(str) {
     return (str || '')
       .toString()
@@ -1122,8 +1053,7 @@ const App = {
       .replace(/[\u0300-\u036f]/g, '');
   },
 
-  // --- Helper: ¿hay sesión iniciada? ---
-  // Nota: valida si existe un objeto de usuario en localStorage.
+  // Nota: ¿hay usuario en localStorage?
   isAuthenticated() {
     try {
       const u = JSON.parse(localStorage.getItem('rutabus_user') || 'null');
@@ -1131,8 +1061,7 @@ const App = {
     } catch { return false; }
   },
 
-  // --- Helper: ¿es administrador? ---
-  // Nota: revisa el rol del usuario guardado en localStorage.
+  // Nota: ¿rol administrador?
   isAdmin() {
     try {
       const u = JSON.parse(localStorage.getItem('rutabus_user') || 'null');
@@ -1140,25 +1069,24 @@ const App = {
     } catch { return false; }
   },
 
-  // ==================== GEOMETRÍA (trayectos y muestreo) ====================
+  // ====================== GEOMETRÍA DE RUTA ======================
 
-  // --- Construir recorrido continuo desde GeoJSON ---
-  // Nota: une segmentos cercanos y re-muestrea puntos para una animación fluida.
+  // Nota: toma un GeoJSON y construye un camino continuo re-muestreado.
   _buildCoverageLoopFromGeoJSON(geojson, { connectThreshold = 25, resampleEvery = 8 } = {}) {
     const pieces = this._extractPieces(geojson);
     if (pieces.length === 0) return [];
 
     const main = this._connectPieces(pieces.slice(), connectThreshold);
 
-    // Copia restante para revisar anexos no conectados “cercanos”
+    // Revisa piezas “sueltas” y las engancha a los extremos más cercanos
     const remaining = [];
     for (const p of pieces) remaining.push(p);
 
     const closeTo = (a, b, thr) => a.distanceTo(b) <= thr;
     const endpoints = (arr) => [arr[0], arr[arr.length - 1]];
     const thr = connectThreshold;
-    const unattached = [];
 
+    const unattached = [];
     for (const seg of remaining) {
       const [s, e] = endpoints(seg);
       const [ms, me] = endpoints(main);
@@ -1208,16 +1136,13 @@ const App = {
     return this._resamplePath(cleaned, resampleEvery);
   },
 
-  // --- Extraer piezas LineString/MultiLineString ---
-  // Nota: transforma coordenadas del GeoJSON en arrays de L.LatLng.
+  // Nota: extrae arrays de L.latLng desde LineString/MultiLineString.
   _extractPieces(geojson) {
     const out = [];
     if (!geojson?.features) return out;
-
     for (const f of geojson.features) {
       const g = f.geometry;
       if (!g) continue;
-
       if (g.type === 'LineString') {
         const arr = g.coordinates.map(([lng, lat]) => L.latLng(lat, lng));
         if (arr.length >= 2) out.push(arr);
@@ -1231,8 +1156,7 @@ const App = {
     return out;
   },
 
-  // --- Conectar piezas cercanas ---
-  // Nota: elige segmentos más largos primero y une extremos si están dentro del umbral.
+  // Nota: une piezas cercanas priorizando la más larga como base.
   _connectPieces(pieces, thresholdMeters) {
     const remaining = pieces.map(p => p.slice());
     remaining.sort((a, b) => b.length - a.length);
@@ -1274,8 +1198,7 @@ const App = {
     return path;
   },
 
-  // --- Quitar duplicados consecutivos ---
-  // Nota: evita puntos repetidos que rompen cálculos de distancia/animación.
+  // Nota: quita puntos consecutivos idénticos.
   _dedupeConsecutive(latlngs) {
     const out = [];
     for (let i = 0; i < latlngs.length; i++) {
@@ -1285,25 +1208,18 @@ const App = {
     return out;
   },
 
-  // --- Re-muestrear ruta cada N metros ---
-  // Nota: crea puntos intermedios espaciados para animación uniforme.
+  // Nota: re-muestrea cada ~N metros para animación suave.
   _resamplePath(latlngs, targetMeters = 8) {
     if (latlngs.length < 2) return latlngs.slice();
     const out = [latlngs[0]];
     let carry = 0;
-
     for (let i = 0; i < latlngs.length - 1; i++) {
-      const a = latlngs[i];
-      const b = latlngs[i + 1];
+      const a = latlngs[i], b = latlngs[i + 1];
       let d = a.distanceTo(b);
       if (d === 0) continue;
-
       for (let dist = targetMeters - carry; dist < d; dist += targetMeters) {
         const t = dist / d;
-        out.push(L.latLng(
-          a.lat + (b.lat - a.lat) * t,
-          a.lng + (b.lng - a.lng) * t
-        ));
+        out.push(L.latLng(a.lat + (b.lat - a.lat) * t, a.lng + (b.lng - a.lng) * t));
       }
       carry = (targetMeters - ((d - carry) % targetMeters)) % targetMeters;
       out.push(b);
@@ -1311,21 +1227,88 @@ const App = {
     return this._dedupeConsecutive(out);
   },
 
-  // ==================== SELECCIÓN DE PARADAS / SEGMENTOS ====================
+  // ================== PROYECCIÓN Y SEGMENTO DIRIGIDO ==================
 
-  // --- Índice más cercano en camino ---
-  // Nota: busca el punto de ruta más cercano a un latlng dado.
-  _nearestIndexInPath(latlngs, target) {
-    let bestIdx = 0, bestD = Infinity;
-    for (let i = 0; i < latlngs.length; i++) {
-      const d = latlngs[i].distanceTo(target);
-      if (d < bestD) { bestD = d; bestIdx = i; }
+  // Nota: proyecta una coordenada 'target' sobre el polyline y devuelve punto interpolado.
+  _projectOnPath(latlngs, target) {
+    let best = { segIndex: 0, t: 0, point: latlngs[0] };
+    let bestDist = Infinity;
+    const T = L.latLng(target);
+
+    for (let i = 0; i < latlngs.length - 1; i++) {
+      const A = latlngs[i], B = latlngs[i + 1];
+      const ax = A.lng, ay = A.lat;
+      const bx = B.lng, by = B.lat;
+      const tx = T.lng, ty = T.lat;
+
+      const vx = bx - ax, vy = by - ay;
+      const wx = tx - ax, wy = ty - ay;
+
+      const vv = vx*vx + vy*vy;
+      let t = vv > 0 ? ((wx*vx + wy*vy) / vv) : 0;
+      if (t < 0) t = 0;
+      if (t > 1) t = 1;
+
+      const px = ax + vx * t;
+      const py = ay + vy * t;
+      const P = L.latLng(py, px);
+
+      const d = P.distanceTo(T);
+      if (d < bestDist) {
+        bestDist = d;
+        best = { segIndex: i, t, point: P };
+      }
     }
-    return bestIdx;
+    return best;
   },
 
-  // --- Reset selección de una ruta ---
-  // Nota: limpia inicio/destino, segmento pintado y detiene animación local.
+  // Nota: arma la secuencia de puntos de A→B respetando el sentido Inicio→Destino.
+  _buildSegmentBetween(latlngs, A, B) {
+    const forward = (A.segIndex < B.segIndex) || (A.segIndex === B.segIndex && A.t <= B.t);
+
+    const pushInterpolated = (arr, i, t) => {
+      const P = (t <= 0) ? latlngs[i]
+            : (t >= 1) ? latlngs[i+1]
+            : L.latLng(
+                latlngs[i].lat + (latlngs[i+1].lat - latlngs[i].lat) * t,
+                latlngs[i].lng + (latlngs[i+1].lng - latlngs[i].lng) * t
+              );
+      if (arr.length === 0 || !arr[arr.length - 1].equals(P)) arr.push(P);
+    };
+
+    const out = [];
+    if (forward) {
+      // A → B hacia delante
+      pushInterpolated(out, A.segIndex, A.t);
+      for (let i = A.segIndex + 1; i <= B.segIndex; i++) {
+        if (!out[out.length - 1]?.equals(latlngs[i])) out.push(latlngs[i]);
+      }
+      pushInterpolated(out, B.segIndex, B.t);
+    } else {
+      // A → B hacia atrás (construye y luego invierte para quedar A→B)
+      const tmp = [];
+      pushInterpolated(tmp, A.segIndex, A.t);
+      for (let i = A.segIndex; i > B.segIndex; i--) {
+        if (!tmp[tmp.length - 1]?.equals(latlngs[i])) tmp.push(latlngs[i]);
+      }
+      pushInterpolated(tmp, B.segIndex, B.t);
+      tmp.reverse();
+      for (const p of tmp) {
+        if (out.length === 0 || !out[out.length - 1].equals(p)) out.push(p);
+      }
+    }
+
+    // Limpieza final
+    const cleaned = [];
+    for (const p of out) {
+      if (cleaned.length === 0 || !cleaned[cleaned.length - 1].equals(p)) cleaned.push(p);
+    }
+    return cleaned;
+  },
+
+  // ================== SELECCIÓN DE PARADAS / SEGMENTO ==================
+
+  // Nota: limpia selección e iconos de inicio/destino para una ruta.
   _resetSelection(rutaId) {
     const entry = this.activeLayers[rutaId];
     if (!entry) return;
@@ -1347,43 +1330,47 @@ const App = {
     }
   },
 
-  // --- Actualizar segmento entre inicio/destino ---
-  // Nota: pinta el tramo entre dos paradas seleccionadas y mueve el “carrito” ahí.
+  // Nota: calcula el tramo exacto Inicio(verde)→Destino(rojo) y anima en ese sentido.
   _updateSegment(rutaId) {
     const entry = this.activeLayers[rutaId];
     if (!entry || !entry.routeLatLngs) return;
 
-    const { start, end } = entry.selection;
+    const { start, end } = entry.selection || {};
     if (!start || !end) return;
 
-    const iA = this._nearestIndexInPath(entry.routeLatLngs, start.latlng);
-    const iB = this._nearestIndexInPath(entry.routeLatLngs, end.latlng);
-    if (iA === iB) return;
+    const path = entry.routeLatLngs;
 
-    const segmentLatLngs = (iA < iB)
-      ? entry.routeLatLngs.slice(iA, iB + 1)
-      : entry.routeLatLngs.slice(iB, iA + 1);
+    // 1) Proyección precisa de ambas paradas sobre el polyline
+    const A = this._projectOnPath(path, start.latlng);
+    const B = this._projectOnPath(path, end.latlng);
 
+    // 2) Construir segmento A→B (siempre en orden Inicio→Destino)
+    const segmentLatLngs = this._buildSegmentBetween(path, A, B);
+    if (segmentLatLngs.length < 2) return;
+
+    // 3) Pintar/actualizar polyline resaltado
     if (entry.selection.segmentLayer) {
       entry.selection.segmentLayer.setLatLngs(segmentLatLngs);
     } else {
       entry.selection.segmentLayer = L.polyline(segmentLatLngs, {
-        color: "#ff9800", weight: 6, opacity: 0.95
+        color: "#ff9800",
+        weight: 6,
+        opacity: 0.95
       }).addTo(this.map);
     }
 
+    // 4) Reiniciar animación y arrancar desde el primer punto (Inicio) hacia el último (Destino)
     if (this.activeRoute) {
       this.map.removeLayer(this.activeRoute);
       this.activeRoute = null;
     }
     this.bus.stop();
+
     this.activeRoute = L.polyline(segmentLatLngs, { opacity: 0, weight: 0 }).addTo(this.map);
-    // Nota simple: esta función hace que el carrito recorra solo el segmento elegido.
-    this.bus.start(this.activeRoute, { speed: 5000, loop: true, fitBounds: true });
+    this.bus.start(this.activeRoute, { speed: 1000, loop: true, fitBounds: true });
   },
 
-  // --- Click en parada (inicio/destino) ---
-  // Nota: alterna selección de inicio/destino y re-dibuja el segmento.
+  // Nota: click en parada — primer click fija Inicio(verde), segundo fija Destino(rojo).
   _handleStopClick(rutaId, marker) {
     if (!this.isAuthenticated()) return this._nudgeGuest('Seleccionar inicio/destino');
 
@@ -1404,6 +1391,7 @@ const App = {
       marker.bindPopup("<b>Destino</b>").openPopup();
       this._updateSegment(rutaId);
     } else {
+      // Reinicia y vuelve a marcar inicio
       this._resetSelection(rutaId);
       const againEntry = this.activeLayers[rutaId];
       againEntry.selection.start = { marker, latlng };
@@ -1412,15 +1400,14 @@ const App = {
     }
   },
 
-  // ==================== ANIMACIÓN DEL BUS ====================
+  // ====================== ANIMACIÓN DEL BUS ======================
 
-  // --- Objeto bus: controla la animación del “carrito” ---
-  // Nota: recorre una polyline usando requestAnimationFrame y distancias acumuladas.
+  // Nota: mueve el “carrito” a lo largo de una polyline usando requestAnimationFrame.
   bus: {
     marker: null,
     animFrame: null,
 
-    // Nota simple: detiene la animación y elimina el marcador.
+    // Nota: detiene animación y quita el marcador.
     stop() {
       if (this.animFrame) {
         cancelAnimationFrame(this.animFrame);
@@ -1432,7 +1419,7 @@ const App = {
       }
     },
 
-    // Nota simple: inicia la animación sobre una polyline dada (loop opcional).
+    // Nota: inicia animación sobre una polyline en el sentido de su orden de puntos.
     start(polyline, opts = {}) {
       const { speed = 8, loop = true, fitBounds = false } = opts;
       this.stop();
@@ -1469,10 +1456,8 @@ const App = {
         let dist = (elapsed / tTotal) * total;
 
         if (dist >= total) {
-          if (loop) {
-            t0 = ts;
-            dist = 0;
-          } else {
+          if (loop) { t0 = ts; dist = 0; }
+          else {
             this.marker.setLatLng(segments[segments.length - 1].b);
             this.animFrame = null;
             return;
@@ -1504,94 +1489,44 @@ const App = {
     }
   },
 
-  // ==================== TRÁFICO ====================
+    // ====================== TRÁFICO ======================
 
-  // --- Estado de tráfico ---
-  // Nota: contenedor de la capa de tráfico y lista de alertas activas.
+  // Nota: contenedor de la capa de tráfico, lista y datos de alertas.
   traffic: {
     layer: null,
     alerts: [],
     listContainer: null
   },
 
-  // --- Descarga alertas de tráfico ---
-  // Nota: lee alerts.json, filtra por estado y expiración.
-  // Carga alertas: mezcla borradores locales + aprobadas del JSON
-    async fetchTrafficAlerts() {
-      try {
-        // JSON remoto (aprobadas)
-        const res = await fetch('./data/traffic/alerts.json', { cache: 'no-store' }).catch(() => null);
-        const remote = res && res.ok ? await res.json() : [];
-        const now = Date.now();
-
-        const approved = (Array.isArray(remote) ? remote : []).filter(a => {
-          const exp = a.expira ? Date.parse(a.expira) : (now + 3600000); // 1h defecto
-          return a.estado === 'aprobada' && exp > now;
-        });
-
-        // Borradores locales (pendientes)
-        const drafts = JSON.parse(localStorage.getItem('trafficDrafts') || '[]')
-          .filter(a => Date.parse(a.expira || 0) > now);
-
-        // De-dup por id: primero drafts (tienen prioridad)
-        const seen = new Set();
-        const combined = [...drafts, ...approved].filter(a => {
-          if (!a || !a.id) return false;
-          if (seen.has(a.id)) return false;
-          seen.add(a.id);
-          return true;
-        });
-
-        this.traffic.alerts = combined;
-      } catch (e) {
-        console.error('Error cargando alerts.json', e);
-        // Fallback: al menos muestra borradores vigentes
-        const now = Date.now();
-        this.traffic.alerts = JSON.parse(localStorage.getItem('trafficDrafts') || '[]')
-          .filter(a => Date.parse(a.expira || 0) > now);
-      }
-    },
-
-    // Elimina de localStorage los borradores vencidos
-    cleanupDrafts() {
+  // --- Cargar alertas de tráfico ---
+  // Nota: lee ./data/traffic/alerts.json y filtra aprobadas no vencidas.
+  async fetchTrafficAlerts() {
+    try {
+      const res = await fetch('./data/traffic/alerts.json', { cache: 'no-store' });
+      if (!res.ok) { this.traffic.alerts = []; return; }
+      const all = await res.json();
       const now = Date.now();
-      const key = 'trafficDrafts';
-      const drafts = JSON.parse(localStorage.getItem(key) || '[]')
-        .filter(a => Date.parse(a.expira || 0) > now); // conserva solo vigentes
-      localStorage.setItem(key, JSON.stringify(drafts));
-    },
-
-      // Limpia borradores vencidos en localStorage
-  cleanupDrafts() {
-    const now = Date.now();
-    const key = 'trafficDrafts';
-    const drafts = JSON.parse(localStorage.getItem(key) || '[]')
-      .filter(a => Date.parse(a.expira || 0) > now);
-    localStorage.setItem(key, JSON.stringify(drafts));
+      this.traffic.alerts = (Array.isArray(all) ? all : []).filter(a => {
+        const exp = a?.expira ? Date.parse(a.expira) : (now + 3600000);
+        return a?.estado === 'aprobada' && exp > now;
+      });
+    } catch (e) {
+      console.error('Error cargando alerts.json', e);
+      this.traffic.alerts = [];
+    }
   },
 
-
-
   // --- Pintar alertas en el mapa ---
-  // Nota: coloca marcadores/círculos por severidad y opcionalmente renderiza segmento de ruta afectado.
-    renderTraffic() {
+  // Nota: coloca marcadores con color por severidad y un círculo opcional por radio.
+  renderTraffic() {
     if (!this.traffic.layer) return;
     this.traffic.layer.clearLayers();
 
-    // Filtros
-    const typeSel = this.$trafficTypeFilter?.value || '';
-    const sevSel  = Number(this.$trafficSevFilter?.value || 0);
-    const alerts = (this.traffic.alerts || []).filter(a =>
-      (!typeSel || a.tipo === typeSel) &&
-      (!sevSel  || (Number(a.severidad) || 1) >= sevSel)
-    );
-
-    // Itera sobre alerts filtradas
-    alerts.forEach(a => {
+    (this.traffic.alerts || []).forEach(a => {
       const sev = Number(a.severidad) || 1;
       const color = sev >= 5 ? '#dc2626' : sev >= 3 ? '#f59e0b' : '#22c55e';
 
-      if (a.coord) {
+      if (a?.coord) {
         const m = L.circleMarker([a.coord.lat, a.coord.lng], {
           radius: 8,
           weight: 2,
@@ -1600,29 +1535,29 @@ const App = {
           fillOpacity: 0.85,
           className: 'traffic-dot'
         })
-        .bindPopup(
-          `<strong>${(a.tipo || 'Incidente').toUpperCase()}</strong>
+        .bindPopup(`
+          <strong>${(a.tipo || 'Incidente').toUpperCase()}</strong>
           <div>${a.descripcion || ''}</div>
-          <div>Severidad: ${sev}${a.rutaId ? ' · Ruta ' + a.rutaId : ''}</div>`
-        )
+          <div>Severidad: ${sev}${a.rutaId ? ` · Ruta ${a.rutaId}` : ''}</div>
+        `)
         .addTo(this.traffic.layer);
 
-        // guarda referencia para usar "pulse" desde la lista
+        // Guarda referencia para centrar desde la lista
         a.__marker = m;
 
-        // círculo de alcance (opcional)
         if (a.radio && Number(a.radio) > 0) {
           L.circle([a.coord.lat, a.coord.lng], {
             radius: Number(a.radio),
-            color: '#0ea5e9',
-            weight: 1,
-            fillColor: '#38bdf8',
-            fillOpacity: 0.15
+            color: color,
+            weight: 2,
+            dashArray: '4 4',
+            fillOpacity: 0.08
           }).addTo(this.traffic.layer);
         }
       }
 
-      if (a.rutaId && a.segment && a.segment.fromStop && a.segment.toStop) {
+      // Si la alerta apunta a una ruta, resalta una sección básica (simple)
+      if (a.rutaId) {
         this._renderTrafficSegment(a).catch(err =>
           console.warn('No se pudo pintar segmento', a.id, err)
         );
@@ -1631,30 +1566,24 @@ const App = {
   },
 
   // --- Lista lateral de alertas ---
-  // Nota: ordena por cercanía a mi ubicación y permite centrar el mapa en cada alerta.
-    renderTrafficList() {
-      const ul = this.traffic.listContainer;
-      if (!ul) return;
+  // Nota: construye lista ordenada por cercanía y añade botón “Centrar”.
+  renderTrafficList() {
+    const ul = this.traffic.listContainer;
+    if (!ul) return;
 
-      ul.innerHTML = '';
+    ul.innerHTML = '';
 
-      // filtros (opcional)
-      const typeSel = this.$trafficTypeFilter?.value || '';
-      const sevSel  = Number(this.$trafficSevFilter?.value || 0);
-      const alerts = (this.traffic.alerts || []).filter(a =>
-        (!typeSel || a.tipo === typeSel) &&
-        (!sevSel  || (Number(a.severidad) || 1) >= sevSel)
-      );
-
-    // referencia para ordenar por cercanía
-    const pos =
+    // Posición de referencia (última conocida o fija)
+    const ref =
       this.lastUserLatLng ||
       (this.userLocation ? L.latLng(this.userLocation.lat, this.userLocation.lon) : null);
 
-    const items = alerts
+    const items = (this.traffic.alerts || [])
       .map(a => {
         let distKm = null;
-        if (pos && a.coord) distKm = pos.distanceTo(L.latLng(a.coord.lat, a.coord.lng)) / 1000;
+        if (ref && a?.coord) {
+          distKm = ref.distanceTo(L.latLng(a.coord.lat, a.coord.lng)) / 1000;
+        }
         return { a, distKm };
       })
       .sort((x, y) => {
@@ -1683,7 +1612,13 @@ const App = {
       `;
 
       li.querySelector('button').addEventListener('click', () => {
-        if (a.coord) this.map.setView([a.coord.lat, a.coord.lng], Math.max(this.map.getZoom(), 15));
+        if (a.__marker) {
+          const p = a.__marker.getLatLng();
+          this.map.setView(p, Math.max(this.map.getZoom(), 15));
+          a.__marker.openPopup();
+        } else if (a.coord) {
+          this.map.setView([a.coord.lat, a.coord.lng], Math.max(this.map.getZoom(), 15));
+        }
       });
 
       ul.appendChild(li);
@@ -1695,14 +1630,12 @@ const App = {
       li.textContent = 'Sin alertas vigentes.';
       ul.appendChild(li);
     }
+  },
 
-    this.map.invalidateSize();
-  }
-  ,
-
-    // --- Pintar segmento de ruta afectado por una alerta ---
-    // Nota: carga el route.json de la ruta y dibuja un polyline resaltado (simple).
-    async _renderTrafficSegment(alerta) {
+  // --- Pintar segmento de ruta afectado (simple) ---
+  // Nota: carga el GeoJSON de la ruta y lo resalta en el mapa (línea punteada).
+  async _renderTrafficSegment(alerta) {
+    try {
       const geo = await this.fetchGeoJSON(`./data/${alerta.rutaId}/route.json`);
       if (!geo) return;
       const latlngs = this._buildCoverageLoopFromGeoJSON(geo, { connectThreshold: 25, resampleEvery: 8 });
@@ -1714,208 +1647,26 @@ const App = {
         opacity: 0.6,
         dashArray: '6 6'
       }).addTo(this.traffic.layer);
-    },
+    } catch (e) {
+      console.warn('No se pudo resaltar ruta para alerta', alerta?.rutaId, e);
+    }
+  },
 
-    // --- Aviso para invitados (nudges) ---
-    // Nota: anima una leyenda para avisar que la función requiere iniciar sesión.
-    _nudgeGuest(featureName = '') {
-      if (this.elements.guestLegend) {
-        this.elements.guestLegend.classList.remove('pulse');
-        // reflow para reiniciar la animación CSS
-        void this.elements.guestLegend.offsetWidth;
-        this.elements.guestLegend.classList.add('pulse');
-      }
-      if (featureName) {
-        alert(`Inicia sesión para usar: ${featureName}.`);
-      }
-    },
-
-      // === Reporte de tráfico: métodos ===
-    _setCoordsRowVisible(show) {
-      const row = this.$trafficForm?.querySelector('#coordsRow');
-      if (!row || !this.$trafficForm) return;
-      row.style.display = show ? '' : 'none';
-      const lat = this.$trafficForm.elements['lat'];
-      const lng = this.$trafficForm.elements['lng'];
-      lat.readOnly = !show; lng.readOnly = !show;
-      lat.required = show;  lng.required = show;
-    },
-
-    _applyMyLocationToForm() {
-      const f = this.$trafficForm; if (!f) return;
-      const my = this.userLocation;
-      if (my) {
-        f.elements['lat'].value = (+my.lat).toFixed(6);
-        f.elements['lng'].value = (+my.lon).toFixed(6);
-      } else {
-        f.elements['lat'].value = '';
-        f.elements['lng'].value = '';
-      }
-      this._setCoordsRowVisible(false); // ocultar inputs en “Mi ubicación”
-    },
-
-    startTrafficReport() {
-      if (!this.$trafficForm) return;
-      const f = this.$trafficForm;
-      f.reset();
-      f.elements['tipo'].value = 'congestion';
-      f.elements['severidad'].value = 3;
-      f.elements['horas'].value = 3;
-
-      // “Mi ubicación” por defecto
-      f.querySelector('#locMyPos')?.setAttribute('checked', 'checked');
-      if (f.querySelector('#locMyPos')) f.querySelector('#locMyPos').checked = true;
-      this._applyMyLocationToForm();
-
-      this.$cancelPickBtn?.classList.add('d-none');
-      this._stopPickOnMap();
-      this._trafficModal?.show();
-    },
-
-    _onLocModeChange(e) {
-      const mode = e?.target?.value;
-      if (mode === 'mypos') {
-        this.$cancelPickBtn?.classList.add('d-none');
-        this._stopPickOnMap();
-        this._applyMyLocationToForm();
-      } else {
-        this.$cancelPickBtn?.classList.remove('d-none');
-        this._setCoordsRowVisible(true);
-        this._startPickOnMap();
-      }
-    },
-
-    _startPickOnMap() {
-      if (this.pickOnMap.active) return;
-      this.pickOnMap.active = true;
-
-      const handler = (ev) => {
-        const { lat, lng } = ev.latlng;
-        if (!this.pickOnMap.marker) {
-          this.pickOnMap.marker = L.marker([lat, lng], { draggable: true }).addTo(this.map);
-          this.pickOnMap.marker.on('dragend', () => {
-            const p = this.pickOnMap.marker.getLatLng();
-            this._fillFormCoords(p.lat, p.lng);
-          });
-        } else {
-          this.pickOnMap.marker.setLatLng([lat, lng]);
-        }
-        this._fillFormCoords(lat, lng);
-      };
-
-      this.map.getContainer().style.cursor = 'crosshair';
-      this.map.on('click', handler);
-      this.pickOnMap.clickHandler = handler;
-    },
-
-    _stopPickOnMap() {
-      if (!this.pickOnMap.active) return;
-      this.pickOnMap.active = false;
-
-      this.map.getContainer().style.cursor = '';
-      if (this.pickOnMap.clickHandler) {
-        this.map.off('click', this.pickOnMap.clickHandler);
-        this.pickOnMap.clickHandler = null;
-      }
-      if (this.pickOnMap.marker) {
-        this.map.removeLayer(this.pickOnMap.marker);
-        this.pickOnMap.marker = null;
-      }
-    },
-
-    _fillFormCoords(lat, lng) {
-      if (!this.$trafficForm) return;
-      this.$trafficForm.elements['lat'].value = (+lat).toFixed(6);
-      this.$trafficForm.elements['lng'].value = (+lng).toFixed(6);
-    },
-
-    submitTrafficReport(e) {
-      if (!this.canReportNow()) { this.showToast('Espera un momento antes de enviar otro reporte.'); return; }
-      e.preventDefault();
-      if (!this.$trafficForm) return;
-      const f = this.$trafficForm;
-
-      const tipo = f.elements['tipo'].value || 'otro';
-      const severidad = Math.min(5, Math.max(1, +f.elements['severidad'].value || 1));
-      const descripcion = f.elements['descripcion'].value?.trim() || '';
-      const horas = Math.min(24, Math.max(1, +f.elements['horas'].value || 3));
-      const radio = f.elements['radio'].value ? Math.max(0, +f.elements['radio'].value) : null;
-
-      const mode = f.elements['locMode'].value;
-      let lat, lng;
-
-      if (!this.canReportNow()) {
-        this.showToast('Espera un momento antes de enviar otro reporte.');
-        return;
-      }
-
-
-      if (mode === 'mypos') {
-        if (!this.userLocation) {
-          alert('No tengo tu ubicación aún. Activa el seguimiento de ubicación.');
-          return;
-        }
-        lat = this.userLocation.lat;
-        lng = this.userLocation.lon;
-      } else {
-        lat = parseFloat(f.elements['lat'].value);
-        lng = parseFloat(f.elements['lng'].value);
-        if (!isFinite(lat) || !isFinite(lng)) {
-          alert('Haz click en el mapa para fijar el punto.');
-          return;
-        }
-      }
-
-      const now = new Date();
-      const alertObj = {
-        id: `u-${now.getTime()}`,
-        tipo, severidad, descripcion,
-        coord: { lat, lng },
-        radio: radio || undefined,
-        inicio: now.toISOString(),
-        expira: new Date(now.getTime() + horas * 3600 * 1000).toISOString(),
-        fuente: 'usuario',
-        estado: 'pendiente'
-      };
-
-      // Guarda local y muestra al instante
-      const key = 'trafficDrafts';
-      const drafts = JSON.parse(localStorage.getItem(key) || '[]');
-      drafts.push(alertObj);
-      localStorage.setItem(key, JSON.stringify(drafts));
-
-      this.traffic.alerts = [alertObj, ...(this.traffic.alerts || [])];
-      this.renderTraffic();
-      this.renderTrafficList();
-
-      this._trafficModal?.hide();
-      this._stopPickOnMap();
-      this.showToast('¡Gracias! Tu alerta quedó como "pendiente".');
-
-      this.markReportNow();
-
-    },
-
-    showToast(msg) {
-      const el = document.getElementById('appToast');
-      const body = document.getElementById('appToastMsg');
-      if (!el || !body) return;
-      body.textContent = msg;
-      (new bootstrap.Toast(el)).show();
-    },
-
-    canReportNow() {
-      const last = Number(localStorage.getItem('trafficLastReportTs') || 0);
-      const MIN = 2 * 60 * 1000; // 2 min
-      return Date.now() - last > MIN;
-    },
-    markReportNow() {
-      localStorage.setItem('trafficLastReportTs', String(Date.now()));
-    },
-
+  // --- Aviso para invitados ---
+  // Nota: da un “nudge” visual y alerta si la acción requiere sesión.
+  _nudgeGuest(featureName = '') {
+    if (this.elements.guestLegend) {
+      this.elements.guestLegend.classList.remove('pulse'); // reinicia animación
+      void this.elements.guestLegend.offsetWidth;
+      this.elements.guestLegend.classList.add('pulse');
+    }
+    if (featureName) {
+      alert(`Inicia sesión para usar: ${featureName}.`);
+    }
+  }
 
 }; // <- Cierre del objeto App
 
-// --- Bootstrap del módulo ---
-// Nota: cuando el DOM esté listo, inicializa la app.
+// ====================== Bootstrap del módulo ======================
+// Nota: inicia la app cuando el DOM está listo.
 document.addEventListener('DOMContentLoaded', () => App.init());
