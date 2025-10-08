@@ -384,6 +384,13 @@ const App = {
       adminMenu: document.getElementById('adminMenu'),
       addRouteBtn: document.getElementById('addRouteBtn'),
       trafficList: document.getElementById('trafficList'),
+      trafficTypeFilter: document.getElementById('trafficTypeFilter'),
+      trafficSevFilter:  document.getElementById('trafficSevFilter'),
+      appToast:          document.getElementById('appToast'),
+      appToastMsg:       document.getElementById('appToastMsg'),
+      trafficModalEl:   document.getElementById('trafficModal'),
+      trafficForm:      document.getElementById('trafficForm'),
+      cancelPickBtn:    document.getElementById('cancelPickBtn'),
     };
   },
 
@@ -394,6 +401,9 @@ const App = {
     this.initMap();
     this.updateAuthUI();
     this.setupEventListeners();
+    this._trafficModal = this.elements.trafficModalEl
+      ? new bootstrap.Modal(this.elements.trafficModalEl)
+      : null;
 
     await this.fetchAllRouteData();
     this.renderRouteList();
@@ -410,6 +420,37 @@ const App = {
       this.renderTraffic();
       this.renderTrafficList();
     });
+
+        // Modal de tráfico
+    this._trafficModal = this.elements.trafficModalEl
+      ? new bootstrap.Modal(this.elements.trafficModalEl)
+      : null;
+
+    // cuando se muestra/oculta el modal de tráfico
+    this.elements.trafficModalEl?.addEventListener('shown.bs.modal', () => this.resizeMapSoon(0));
+    this.elements.trafficModalEl?.addEventListener('hidden.bs.modal', () => this.resizeMapSoon(0));
+
+    // al cambiar el tamaño de la ventana
+    window.addEventListener('resize', () => this.resizeMapSoon(50));
+
+    // (opcional) un tiro al terminar de crear el mapa
+    setTimeout(() => this.resizeMapSoon(0), 0);
+
+
+    // Cerrar modal cancela el “picker” si lo hubiera (no pasa nada si no existe)
+    this.elements.trafficModalEl?.addEventListener('hidden.bs.modal', () => {
+      this._stopPickOnMap?.();
+    });
+
+    // Click del botón “Reportar tráfico”
+    this.elements.reportTrafficBtn?.addEventListener('click', () => {
+      // Si quieres exigir sesión, deja estos 2 renglones:
+      if (!this.isAuthenticated || !this.isAuthenticated()) {
+        this._nudgeGuest?.('Reportar tráfico'); return;
+      }
+      this.startTrafficReport();
+    });
+
   },
 
   // --- Crear mapa y capa de tráfico ---
@@ -487,37 +528,56 @@ const App = {
 
   // --- Obtener ubicación actual (una vez) ---
 
-  getUserLocation() {
-    if (!this.isAuthenticated()) { this._nudgeGuest('Mi ubicación'); return Promise.reject(); }
-    const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
+  // --- Obtener ubicación actual (una vez) ---
+getUserLocation(opts = {}) {
+  // opciones por defecto + bandera "requireAuth"
+  const {
+    enableHighAccuracy = true,
+    timeout = 10000,
+    maximumAge = 0,
+    requireAuth = false,   // <-- NUEVO
+  } = opts;
 
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        alert("La geolocalización no es compatible con tu navegador.");
-        return reject(new Error("Geolocation not supported"));
-      }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          this.userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-          const userLatLng = [this.userLocation.lat, this.userLocation.lon];
+  // Solo bloquea si requireAuth=true
+  if (requireAuth && !this.isAuthenticated?.()) {
+    this._nudgeGuest?.('Mi ubicación');
+    return Promise.reject(new Error('auth-required'));
+  }
 
-          if (this.userLocationMarker) this.map.removeLayer(this.userLocationMarker);
-          this.userLocationMarker = L.marker(userLatLng, { icon: this.icons.ubicacion })
-            .addTo(this.map)
-            .bindPopup("<b>¡Estás aquí!</b>")
-            .openPopup();
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      alert("La geolocalización no es compatible con tu navegador.");
+      return reject(new Error("Geolocation not supported"));
+    }
 
-          this.map.setView(userLatLng, 15);
-          resolve();
-        },
-        (err) => {
-          alert("No se pudo obtener tu ubicación. Asegúrate de haber concedido los permisos.");
-          reject(err);
-        },
-        options
-      );
-    });
-  },
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        this.userLocation = {
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+          accuracy: pos.coords.accuracy
+        };
+        const userLatLng = [this.userLocation.lat, this.userLocation.lon];
+
+        if (this.userLocationMarker) this.map.removeLayer(this.userLocationMarker);
+        this.userLocationMarker = L
+          .marker(userLatLng, { icon: this.icons.ubicacion })
+          .addTo(this.map)
+          .bindPopup('<b>¡Estás aquí!</b>')
+          .openPopup();
+
+        this.map.setView(userLatLng, Math.max(this.map.getZoom() || 13, 15), { animate: true });
+        resolve(pos);
+      },
+      (err) => {
+        alert("No se pudo obtener tu ubicación. Asegúrate de haber concedido los permisos.");
+        reject(err);
+      },
+      { enableHighAccuracy, timeout, maximumAge }
+    );
+  });
+},
+
 
   // --- Seguir ubicación en vivo ---
   // Nota: alterna seguimiento con watchPosition y re-render de rutas cercanas.
@@ -590,6 +650,17 @@ const App = {
   // Nota: actualiza marcador, círculo y centra el mapa si followUser está activo.
   _onLocationSuccess(position) {
     const { latitude, longitude, accuracy } = position.coords;
+      // Aviso si la "accuracy" es grande (IP u origen poco confiable)
+  if (Number.isFinite(accuracy) && accuracy > 2000) {
+    this.showToast(`Ubicación imprecisa (~${Math.round(accuracy)} m). Activa "ubicación precisa" o fija el punto con click derecho en el mapa.`);
+  }
+  // Log útil para diagnosticar en campo
+  console.log('[RUTABUS] Geo', {
+    lat: latitude, lon: longitude,
+    accuracy,
+    hint: (accuracy > 2000 ? 'posible IP' : 'wifi/gps')
+  });
+
     this.userLocation = { lat: latitude, lon: longitude, accuracy };
     const latlng = [latitude, longitude];
 
@@ -985,6 +1056,55 @@ const App = {
       }
     });
 
+        // --- Reportar tráfico: abrir modal ---
+    if (this.elements.reportTrafficBtn) {
+      this.elements.reportTrafficBtn.addEventListener('click', () => {
+        // Si quieres exigir sesión, deja este guard:
+        if (!this.isAuthenticated || !this.isAuthenticated()) {
+          this._nudgeGuest?.('Reportar tráfico');
+          return; // quita este return si quieres permitir a invitados
+        }
+        this.startTrafficReport();
+      });
+    }
+
+    // --- Envío del formulario de tráfico ---
+    if (this.elements.trafficForm) {
+      this.elements.trafficForm.addEventListener('submit', (e) => this.submitTrafficReport(e));
+    }
+
+
+    // --- Filtros de tráfico ---
+    if (this.elements.trafficTypeFilter) {
+      this.elements.trafficTypeFilter.addEventListener('change', () => {
+        this.renderTraffic();
+        this.renderTrafficList();
+      });
+    }
+    if (this.elements.trafficSevFilter) {
+      this.elements.trafficSevFilter.addEventListener('change', () => {
+        this.renderTraffic();
+        this.renderTrafficList();
+      });
+    }
+
+    // --- Cambio de modo de ubicación (Mi ubicación / Elegir en el mapa) ---
+if (this.elements.trafficForm) {
+  this.elements.trafficForm.querySelectorAll('input[name="locMode"]').forEach(r => {
+    r.addEventListener('change', (e) => this._onLocModeChange(e));
+  });
+}
+
+// --- Salir del modo “Elegir en el mapa” ---
+this.elements.cancelPickBtn?.addEventListener('click', () => {
+  const f = this.elements.trafficForm;
+  // vuelve a “Mi ubicación”
+  const rMy = f?.querySelector('#locMyPos');
+  if (rMy) { rMy.checked = true; rMy.setAttribute('checked','checked'); }
+  this._onLocModeChange({ target: { value: 'mypos' } });
+});
+
+
     // Logout
     this.elements.logoutBtn?.addEventListener('click', () => this.logout());
 
@@ -997,6 +1117,12 @@ const App = {
         this.elements.toggleSidebarBtn.classList.toggle('collapsed', !!isCollapsed);
       }
     });
+
+    this.elements.toggleSidebarBtn?.addEventListener('click', () => {
+    this.elements.sidebar?.classList.toggle('collapsed');
+    // si tu CSS tiene transición, da un pequeño delay
+    this.resizeMapSoon(150);
+  });
 
     // Alternar cercanas/todas
     this.elements.toggleRoutesBtn?.addEventListener('click', () => {
@@ -1043,6 +1169,30 @@ const App = {
       return (data && Array.isArray(data.features) && data.features.length > 0) ? data : null;
     } catch { return null; }
   },
+
+  // --- Toast corto ---
+  showToast(msg = '') {
+    try {
+      if (!this.elements.appToast || !this.elements.appToastMsg) return alert(msg);
+      this.elements.appToastMsg.textContent = msg;
+      // Bootstrap 5
+      const toast = bootstrap.Toast.getOrCreateInstance(this.elements.appToast);
+      toast.show();
+    } catch {
+      alert(msg);
+    }
+
+    this.elements.trafficTypeFilter?.addEventListener('change', () => {
+    this.renderTraffic();      // repinta capa con filtros
+    this.renderTrafficList();  // y la lista
+    });
+    
+    this.elements.trafficSevFilter?.addEventListener('change', () => {
+    this.renderTraffic();
+    this.renderTrafficList();
+    });
+  },
+
 
   // Nota: normaliza texto (minúsculas y sin acentos) para búsquedas.
   normalizeString(str) {
@@ -1522,6 +1672,26 @@ const App = {
     if (!this.traffic.layer) return;
     this.traffic.layer.clearLayers();
 
+    // Lee filtros UI
+    const typeFilter = this.elements.trafficTypeFilter?.value || '';
+    const sevFilter  = Number(this.elements.trafficSevFilter?.value || 0);
+
+    // Aplica filtros a la copia
+    const filtered = (this.traffic.alerts || []).filter(a => {
+      const typeOk = !typeFilter || (a?.tipo === typeFilter);
+      const sevOk  = !sevFilter || ((Number(a?.severidad) || 1) >= sevFilter);
+      return typeOk && sevOk;
+    });
+
+    // Dibuja usando "filtered" en lugar de this.traffic.alerts
+    filtered.forEach(a => {
+      // (el contenido que ya tienes, igualito)
+      // ...
+    });
+
+    if (!this.traffic.layer) return;
+    this.traffic.layer.clearLayers();
+
     (this.traffic.alerts || []).forEach(a => {
       const sev = Number(a.severidad) || 1;
       const color = sev >= 5 ? '#dc2626' : sev >= 3 ? '#f59e0b' : '#22c55e';
@@ -1571,6 +1741,19 @@ const App = {
     const ul = this.traffic.listContainer;
     if (!ul) return;
 
+        // --- Filtros UI ---
+    const typeFilter = this.elements?.trafficTypeFilter?.value || '';
+    const sevFilter  = Number(this.elements?.trafficSevFilter?.value || 0);
+
+    // Base y filtrado
+    const baseAlerts = this.traffic.alerts || [];
+    const filtered = baseAlerts.filter(a => {
+      const typeOk = !typeFilter || (a?.tipo === typeFilter);
+      const sevOk  = !sevFilter || ((Number(a?.severidad) || 1) >= sevFilter);
+      return typeOk && sevOk;
+    });
+
+
     ul.innerHTML = '';
 
     // Posición de referencia (última conocida o fija)
@@ -1578,7 +1761,7 @@ const App = {
       this.lastUserLatLng ||
       (this.userLocation ? L.latLng(this.userLocation.lat, this.userLocation.lon) : null);
 
-    const items = (this.traffic.alerts || [])
+    const items = filtered
       .map(a => {
         let distKm = null;
         if (ref && a?.coord) {
@@ -1663,7 +1846,247 @@ const App = {
     if (featureName) {
       alert(`Inicia sesión para usar: ${featureName}.`);
     }
+  },
+
+    // Abre el modal y precarga valores por defecto
+  async startTrafficReport() {
+  const form  = this.elements?.trafficForm || document.getElementById('trafficForm');
+  const modal = this._trafficModal || (this.elements?.trafficModalEl
+                ? new bootstrap.Modal(this.elements.trafficModalEl) : null);
+  if (!form || !modal) { console.warn('[RUTABUS] Falta #trafficForm o #trafficModal'); return; }
+
+  // Reset + defaults
+  form.reset();
+  if (form.elements['tipo'])      form.elements['tipo'].value = 'congestion';
+  if (form.elements['severidad']) form.elements['severidad'].value = 3;
+  if (form.elements['horas'])     form.elements['horas'].value = 3;
+
+  // Radios: Mi ubicación por defecto
+  const rMy = form.querySelector('#locMyPos');
+  const rPk = form.querySelector('#locPick');
+  if (rMy) { rMy.checked = true; rMy.setAttribute('checked','checked'); }
+  if (rPk) { rPk.checked = false; rPk.removeAttribute('checked'); }
+
+  // Intenta obtener mi ubicación si no existe aún
+  if (!this.userLocation) {
+    try { await this.getUserLocation(); } catch {}
   }
+
+  if (this.userLocation) {
+    this._applyMyLocationToForm();
+    this._setCoordsRowVisible(false);
+    this._stopPickOnMap();
+  } else {
+    // Fallback: no hubo geolocalización -> pasar a "Elegir en el mapa"
+    if (rPk) { rPk.checked = true; rPk.setAttribute('checked','checked'); }
+    if (rMy) { rMy.checked = false; rMy.removeAttribute('checked'); }
+    this._onLocModeChange({ target: { value: 'pick' } });
+    this.showToast?.('No se obtuvo tu ubicación; elige el punto con clic derecho en el mapa.');
+  }
+
+  this._trafficModal = modal;
+  this._trafficModal.show();
+},
+
+
+  // Procesa el submit y agrega la alerta a la capa/lista
+  async submitTrafficReport(e) {
+  e.preventDefault();
+  const f = e.target || this.elements?.trafficForm;
+  if (!f) return;
+
+  // Campos
+  const tipo       = f.elements['tipo']?.value || 'congestion';
+  const severidad  = Number(f.elements['severidad']?.value || 3);
+  const horas      = Math.max(1, Number(f.elements['horas']?.value || 3));
+  const descripcion= (f.elements['descripcion']?.value || '').trim();
+  const rutaId     = f.elements['rutaId']?.value || null;
+
+  // Origen de coordenadas según radio
+  const mode = f.querySelector('input[name="locMode"]:checked')?.value || 'mypos';
+  let lat, lng;
+
+  if (mode === 'mypos' && this.userLocation) {
+    lat = +this.userLocation.lat; lng = +this.userLocation.lon;
+  } else {
+    lat = parseFloat(f.elements['lat']?.value);
+    lng = parseFloat(f.elements['lng']?.value);
+  }
+
+  if (!isFinite(lat) || !isFinite(lng)) {
+  // reintenta si pidieron "Mi ubicación"
+  if (mode === 'mypos' && !this.userLocation) {
+    try { await this.getUserLocation(); } catch {}
+    if (this.userLocation) {
+      lat = +this.userLocation.lat; lng = +this.userLocation.lon;
+    }
+  }
+  if (!isFinite(lat) || !isFinite(lng)) {
+    this.showToast?.('Falta ubicar el punto (lat/lng).');
+    return;
+  }
+}
+
+
+  // Expiración calculada por duración (horas)
+  const expira = new Date(Date.now() + horas * 3600000).toISOString();
+  const radio  = Number(f.elements['radio']?.value || 0) || undefined;
+
+  // Estructuras
+  this.traffic = this.traffic || {};
+  this.traffic.alerts = this.traffic.alerts || [];
+  if (!this.traffic.layer) this.traffic.layer = L.layerGroup().addTo(this.map);
+
+  // Nueva alerta
+  const alerta = {
+    id: 'local-' + Date.now(),
+    source: 'local',
+    tipo,
+    severidad,
+    descripcion,
+    rutaId,
+    horas,
+    expira,              // <-- ahora sí usamos la vigencia
+    coord: { lat, lng },
+    radio,
+    estado: 'aprobada',  // para que pase los filtros
+    createdAt: new Date().toISOString()
+  };
+
+  this.traffic.alerts.push(alerta);
+
+  // Persistencia local (opcional)
+  try {
+    const prev = JSON.parse(localStorage.getItem('traffic_local_alerts') || '[]');
+    prev.push(alerta);
+    localStorage.setItem('traffic_local_alerts', JSON.stringify(prev));
+  } catch {}
+
+  // Cierra modal y repinta
+  this._trafficModal?.hide();
+  this.renderTraffic?.();
+  this.renderTrafficList?.();
+
+  this.map?.setView([lat, lng], Math.max(this.map.getZoom() || 13, 16), { animate: true });
+  this.showToast?.('¡Alerta reportada!');
+
+  this.map?.setView([lat, lng], Math.max(this.map.getZoom() || 13, 16), { animate: true });
+  this.resizeMapSoon(0);
+},
+
+
+  // --- UI coords on/off ---
+_setCoordsRowVisible(show) {
+  const row = document.getElementById('coordsRow');
+  if (!row) return;
+  row.style.display = show ? '' : 'none';
+},
+
+// --- Rellena lat/lng con mi ubicación (si existe) ---
+_applyMyLocationToForm() {
+  const f = this.elements?.trafficForm;
+  if (!f) return;
+  const latInp = f.elements['lat'], lngInp = f.elements['lng'];
+  if (!latInp || !lngInp) return;
+
+  if (this.userLocation) {
+    latInp.value = (+this.userLocation.lat).toFixed(6);
+    lngInp.value = (+this.userLocation.lon).toFixed(6);
+  } else {
+    latInp.value = '';
+    lngInp.value = '';
+  }
+},
+
+// --- Empezar a elegir punto en el mapa (click derecho) ---
+_startPickOnMap() {
+  const f = this.elements?.trafficForm;
+  if (!f) return;
+
+  this.pickOnMap.active = true;
+
+  // muestra inputs de coordenadas y botón "Salir del mapa"
+  this._setCoordsRowVisible(true);
+  this.elements?.cancelPickBtn?.classList.remove('d-none');
+
+  // handler: click derecho fija punto y (opcional) marcador temporal
+  const handler = (e) => {
+    const { lat, lng } = e.latlng;
+
+    // crea/actualiza marcador temporal
+    if (!this.pickOnMap.marker) {
+      this.pickOnMap.marker = L.marker([lat, lng], { draggable: true }).addTo(this.map);
+      this.pickOnMap.marker.on('dragend', ev => {
+        const p = ev.target.getLatLng();
+        f.elements['lat'].value = p.lat.toFixed(6);
+        f.elements['lng'].value = p.lng.toFixed(6);
+      });
+    } else {
+      this.pickOnMap.marker.setLatLng([lat, lng]);
+    }
+
+    // refleja en inputs
+    f.elements['lat'].value = lat.toFixed(6);
+    f.elements['lng'].value = lng.toFixed(6);
+    this.map.setView([lat, lng], Math.max(this.map.getZoom() || 13, 16), { animate: true });
+  };
+
+  this.pickOnMap.clickHandler = handler;
+  this.map.on('contextmenu', handler);
+  this.showToast?.('Haz click derecho en el mapa para fijar el punto.');
+},
+
+// --- Salir del modo “elegir en el mapa” ---
+_stopPickOnMap() {
+  if (this.pickOnMap.clickHandler) {
+    this.map.off('contextmenu', this.pickOnMap.clickHandler);
+    this.pickOnMap.clickHandler = null;
+  }
+  if (this.pickOnMap.marker) {
+    this.map.removeLayer(this.pickOnMap.marker);
+    this.pickOnMap.marker = null;
+  }
+  this.pickOnMap.active = false;
+  this.elements?.cancelPickBtn?.classList.add('d-none');
+},
+
+// --- Cambio de radio (“Mi ubicación” / “Elegir en el mapa”) ---
+async _onLocModeChange(e) {
+  const val = (e?.target?.value) || (
+    this.elements?.trafficForm?.querySelector('input[name="locMode"]:checked')?.value
+  );
+
+  if (val === 'mypos') {
+    // si no hay ubicación, intenta obtenerla ahora
+    if (!this.userLocation) {
+      try { await this.getUserLocation(); } catch {}
+    }
+    if (this.userLocation) {
+      this._applyMyLocationToForm();
+      this._setCoordsRowVisible(false);
+      this._stopPickOnMap();
+    } else {
+      // si de plano no hay, forzamos a "pick"
+      this.showToast?.('No se pudo obtener tu ubicación; elige el punto en el mapa.');
+      this._startPickOnMap();
+    }
+  } else if (val === 'pick') {
+    this._startPickOnMap();
+  }
+},
+
+// Recalcula el tamaño del mapa después de cambios de layout
+resizeMapSoon(delay = 0) {
+  if (!this.map) return;
+  clearTimeout(this._resizeTimer);
+  this._resizeTimer = setTimeout(() => {
+    try { this.map.invalidateSize(true); } catch {}
+  }, delay);
+},
+
+
+
+
 
 }; // <- Cierre del objeto App
 
